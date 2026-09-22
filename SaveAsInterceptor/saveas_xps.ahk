@@ -125,7 +125,13 @@ WatchSaveDialog()
     ; If Windows does not provide a useful name,
     ; use the real source-document title.
     if (documentName = "" || IsGenericPrintJobName(documentName))
-        documentName := lastDocumentTitle
+    {
+        queueName := GetLatestPrintJobDocumentName()
+        if (queueName != "" && !IsGenericPrintJobName(queueName))
+            documentName := queueName
+        else
+            documentName := lastDocumentTitle
+    }
 
     ; If no source-document name is available,
     ; do nothing.
@@ -288,6 +294,37 @@ IsGenericPrintJobName(name)
         || normalizedName = "zapisz wydruk jako"
 }
 
+
+GetLatestPrintJobDocumentName()
+{
+    latestName := ""
+    latestJobId := -1
+
+    try
+    {
+        wmi := ComObjGet("winmgmts:")
+        jobs := wmi.ExecQuery("SELECT Name, Document, JobId FROM Win32_PrintJob")
+
+        for job in jobs
+        {
+            if !InStr(StrLower(job.Name), "xps")
+                continue
+
+            jobId := Integer(job.JobId)
+            if (jobId > latestJobId)
+            {
+                latestJobId := jobId
+                latestName := Trim(job.Document)
+            }
+        }
+    }
+    catch
+    {
+        return ""
+    }
+
+    return latestName
+}
 
 Log(message)
 {
