@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:body>
+<w:p><w:pPr><w:pStyle w:val="Title"/></w:pPr><w:r><w:t>XPS to PDF Windows Service</w:t></w:r></w:p>
+<w:p><w:r><w:t>Technical documentation, implementation notes and troubleshooting guide</w:t></w:r></w:p>
+<w:p><w:r><w:t>This document describes the complete printing pipeline implemented for the project, including the AutoHotkey SaveAs interceptor, the .NET background service, GhostXPS conversion, document naming, and the problems that were diagnosed and corrected.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>1. System Architecture</w:t></w:r></w:p>
+<w:p><w:r><w:t>The system has two cooperating processes. The interactive interceptor runs in the logged-in desktop session because it must control the Microsoft XPS Document Writer dialog. The .NET service runs in the background and converts completed XPS files to PDF.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>Print application → Microsoft XPS Document Writer → AutoHotkey interceptor → C:\XPS_OUT\document.xps → XpsToPdfService → GhostXPS → C:\PDF\document.pdf</w:t></w:r></w:p>
+<w:p><w:r><w:t>Important: a Windows service cannot reliably automate a desktop window. Therefore the dialog automation is intentionally a separate user-session process.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>2. AutoHotkey SaveAs Interceptor</w:t></w:r></w:p>
+<w:p><w:r><w:t>File: SaveAsInterceptor\saveas_xps.ahk. The script watches for the XPS Writer save dialog, determines the document name, selects classic XPS format, writes the output path, and confirms Save.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.1 Capturing the active document</w:t></w:r></w:p>
+<w:p><w:r><w:t>The script periodically records the title of the application that is active before printing. This supports LibreOffice, Tytan, and other applications instead of assuming LibreOffice only.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>activeHwnd := WinExist("A")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>activeTitle := Trim(WinGetTitle("ahk_id " activeHwnd))</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>if (activeTitle != "" &amp;&amp; !IsGenericPrintJobName(activeTitle))</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    lastDocumentTitle := activeTitle</w:t></w:r></w:p>
+<w:p><w:r><w:t>Generic titles such as “Printing” and “Drukowanie dokumentu” are ignored because they are printer-generated job labels, not document names.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.2 Detecting and naming the save dialog</w:t></w:r></w:p>
+<w:p><w:r><w:t>When the dialog is detected, its suggested filename is preferred. If that value is empty or generic, the saved active-document title is used instead.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>if (documentName = "" || IsGenericPrintJobName(documentName))</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    documentName := lastDocumentTitle</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>documentName := RegExReplace(documentName, "\s+[—-]\s+.*$")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>documentName := RegExReplace(documentName, "i)\.(?:docx|doc|odt|pdf)$")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>filePath := xpsFolder . "\" . documentName . ".xps"</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.3 Tytan/Bullzip Kartoteka naming</w:t></w:r></w:p>
+<w:p><w:r><w:t>Tytan exposes “Kartoteka wpłat” in its window title, while Bullzip produces “Kartoteka_wplat_yyyy-MM-dd”. The interceptor contains a targeted normalization rule for this report type.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>if RegExMatch(documentName, "i)^kartoteka(?:\s|$)")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>{</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    documentName := StrReplace(documentName, Chr(0x0105), "a")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    documentName := StrReplace(documentName, Chr(0x0142), "l")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    documentName := RegExReplace(documentName, "\s+", "_")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>}</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.4 Selecting XPS rather than OpenXPS</w:t></w:r></w:p>
+<w:p><w:r><w:t>Windows may default to OpenXPS (*.oxps). The script attempts to select XPS Document (*.xps) in ComboBox2 before saving.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>for _, typeName in ["XPS Document (*.xps)", "XPS Document", "*.xps"]</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    if ControlChooseString(typeName, "ComboBox2", "ahk_id " hwnd)</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>        break</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>2.5 Writing and confirming the filename</w:t></w:r></w:p>
+<w:p><w:r><w:t>The final implementation uses ControlSetText to avoid keyboard-layout and stale-clipboard problems. It verifies the field, makes the window transparent, and sends Enter.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>ControlSetText(filePath, "Edit1", "ahk_id " hwnd)</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>actualPath := ControlGetText("Edit1", "ahk_id " hwnd)</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>Log("Campo tras escribir: '" . actualPath . "'")</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>WinSetTransparent(0, "ahk_id " hwnd)</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>ControlSend("{Enter}", , "ahk_id " hwnd)</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>3. XpsToPdfService</w:t></w:r></w:p>
+<w:p><w:r><w:t>File: Worker.cs. The .NET 9 background service watches C:\XPS_OUT and converts completed XPS/OpenXPS packages to PDF.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.1 FileSystemWatcher and extensions</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>watcher.Filter = "*.*";</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>if (!e.FullPath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &amp;&amp;</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    !e.FullPath.EndsWith(".oxps", StringComparison.OrdinalIgnoreCase))</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    return;</w:t></w:r></w:p>
+<w:p><w:r><w:t>The broad watcher filter is required because FileSystemWatcher supports one pattern. The handler then rejects unrelated files.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.2 Waiting for a complete file</w:t></w:r></w:p>
+<w:p><w:r><w:t>The Created event can occur while the printer is still writing the package. WaitForFileReadyAsync checks that the file is non-empty, can be opened exclusively, and has a stable length and timestamp for multiple checks.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr><w:r><w:t>3.3 GhostXPS conversion</w:t></w:r></w:p>
+<w:p><w:r><w:t>The service uses GhostXPS, not the regular Ghostscript console executable:</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>private const string GhostXps =</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>    @"C:\Users\Ibai\Downloads\ghostxps-10.08.0-win64\ghostxps-10.08.0-win64\gxpswin64.exe";</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add("-dSAFER");</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add("-dBATCH");</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add("-dNOPAUSE");</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add("-sDEVICE=pdfwrite");</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add($"-sOutputFile={temporaryPdfFile}");</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>psi.ArgumentList.Add(xpsFile);</w:t></w:r></w:p>
+<w:p><w:r><w:t>The output is first written to a temporary PDF. It is published only when the process exits with code 0 and the temporary file exists.</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>File.Move(temporaryPdfFile, pdfFile, true);</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>4. Why the original implementation failed</w:t></w:r></w:p>
+<w:p><w:r><w:t>1. gswin64c.exe was used as the XPS interpreter. GhostXPS (gxpswin64.exe) is the correct interpreter.</w:t></w:r></w:p>
+<w:p><w:r><w:t>2. A fixed two-second delay did not guarantee that the XPS package was complete.</w:t></w:r></w:p>
+<w:p><w:r><w:t>3. The watcher accepted only .xps even though the driver could create .oxps.</w:t></w:r></w:p>
+<w:p><w:r><w:t>4. The timer processed the same dialog repeatedly, producing repeated extensions such as .xps.xps.</w:t></w:r></w:p>
+<w:p><w:r><w:t>5. WinHide removed the dialog from the targetable window set, causing Target window not found errors.</w:t></w:r></w:p>
+<w:p><w:r><w:t>6. Button1 is not a stable Save control identifier across Windows versions and languages.</w:t></w:r></w:p>
+<w:p><w:r><w:t>7. Keyboard typing and stale clipboard contents produced corrupted names such as av.oxps.</w:t></w:r></w:p>
+<w:p><w:r><w:t>8. The title cache originally searched only LibreOffice, so Tytan reused an old LibreOffice name.</w:t></w:r></w:p>
+<w:p><w:r><w:t>9. Multiple service processes locked the executable and prevented dotnet run or build from replacing it.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>5. Relationship to PrintDocument.DocumentName</w:t></w:r></w:p>
+<w:p><w:r><w:t>The ideal implementation is inside the application that owns the print operation:</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>using PrintDocument pd = new PrintDocument();</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>pd.DocumentName = filename;</w:t></w:r></w:p>
+<w:p><w:pPr><w:pStyle w:val="Code"/></w:pPr><w:r><w:t>pd.Print();</w:t></w:r></w:p>
+<w:p><w:r><w:t>That sets the print-job name before the driver creates the XPS file. The current project does not contain Tytan source code, so it cannot add this line to Tytan. The AutoHotkey interceptor is an external approximation: it reconstructs the intended name from the active window and then automates the driver dialog.</w:t></w:r></w:p>
+
+<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>6. Operational notes</w:t></w:r></w:p>
+<w:p><w:r><w:t>Run exactly one XpsToPdfService instance. Run the AutoHotkey script in the same logged-in desktop session as the printing application. If the printing application is elevated, AutoHotkey may also need to run elevated because Windows UIPI can block control automation.</w:t></w:r></w:p>
+<w:p><w:r><w:t>Diagnostic log: C:\XPS_OUT\saveas-interceptor.log. The log records the proposed name, the captured application title, the final XPS path, and the value read back from the filename control.</w:t></w:r></w:p>
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900"/></w:sectPr>
+</w:body>
+</w:document>

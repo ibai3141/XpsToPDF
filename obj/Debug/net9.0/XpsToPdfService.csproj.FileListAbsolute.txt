@@ -155,7 +155,6 @@ F:\XpsToPdfService\obj\Debug\net9.0\ref\XpsToPdfService.dll
 \\192.168.1.147\d\Projekty-archiwum\tymczasowe\Ibai_erasmus\XpsToPdfService\obj\Debug\net9.0\XpsToPdfService.genruntimeconfig.cache
 C:\Temp\XpsToPdfService-build\appsettings.Development.json
 C:\Temp\XpsToPdfService-build\appsettings.json
-C:\Temp\XpsToPdfService-build\XpsToPdfService.exe
 C:\Temp\XpsToPdfService-build\XpsToPdfService.deps.json
 C:\Temp\XpsToPdfService-build\XpsToPdfService.runtimeconfig.json
 C:\Temp\XpsToPdfService-build\XpsToPdfService.dll

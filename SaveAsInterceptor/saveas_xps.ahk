@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 
 SetTitleMatchMode 2
 SetControlDelay -1
@@ -9,10 +9,10 @@ DirCreate xpsFolder
 lastDocumentTitle := ""
 lastDocumentHwnd := 0
 
-; Recordamos únicamente la ventana real de LibreOffice.
+; Track the source document window and monitor the save dialog.
 SetTimer RememberDocumentTitle, 50
 
-; Vigilamos el diálogo "Save Print Output As".
+; Track the source document window and monitor the save dialog.
 SetTimer WatchSaveDialog, 25
 
 
@@ -20,8 +20,8 @@ RememberDocumentTitle()
 {
     global lastDocumentTitle, lastDocumentHwnd
 
-    ; Si ya apareció el diálogo de guardado, NO cambiamos
-    ; el nombre que capturamos antes de pulsar Print.
+    ; Keep the title captured before the save dialog appeared.
+    ; Keep the title captured before the save dialog appeared.
     if FindSaveDialog()
         return
 
@@ -61,22 +61,22 @@ RememberDocumentTitle()
             continue
         }
 
-        ; SOLO LibreOffice.
+        ; Legacy LibreOffice-only scan retained for compatibility.
         if !InStr(class, "SALFRAME")
             continue
 
         if (title = "")
             continue
 
-        ; Nunca guardar títulos genéricos de impresión.
+        ; Never store generic print-job titles.
         if IsGenericPrintJobName(title)
             continue
 
-        ; Guardamos el último documento real de LibreOffice.
+        ; Store the last real LibreOffice document title.
         lastDocumentTitle := title
         lastDocumentHwnd := hwnd
 
-        ; Ya encontramos la ventana que nos interesa.
+        ; The relevant window has been found.
         break
     }
 }
@@ -96,7 +96,7 @@ WatchSaveDialog()
         return
     }
 
-    ; No procesar el mismo diálogo varias veces.
+    ; Do not process the same dialog more than once.
     if (hwnd = handledDialog)
         return
 
@@ -116,40 +116,40 @@ WatchSaveDialog()
 
     SplitPath suggestedPath, &suggestedFileName
 
-    ; Quitar extensión XPS si Windows la propone.
+    ; Remove the XPS extension if Windows supplies one.
     documentName := RegExReplace(
         suggestedFileName,
         "i)(?:\.xps|\.oxps)+$"
     )
 
-    ; Si Windows no propone un nombre útil,
-    ; utilizamos el nombre real de LibreOffice.
+    ; If Windows does not provide a useful name,
+    ; use the real source-document title.
     if (documentName = "" || IsGenericPrintJobName(documentName))
         documentName := lastDocumentTitle
 
-    ; Si por alguna razón tampoco tenemos nombre de LibreOffice,
-    ; no hacemos nada.
+    ; If no source-document name is available,
+    ; do nothing.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
         Log(
             "ERROR: no se pudo obtener el nombre real. " .
             "Propuesto='" . suggestedFileName .
-            "' | título='" . lastDocumentTitle . "'"
+            "' | tĂ­tulo='" . lastDocumentTitle . "'"
         )
         return
     }
 
-    ; Ejemplo:
-    ; Zadanie_skrót_21_września.docx — LibreOffice Writer
+    ; Example:
+    ; Zadanie_skrĂłt_21_wrzeĹ›nia.docx â€” LibreOffice Writer
     ;
-    ; queda:
-    ; Zadanie_skrót_21_września.docx
+    ; becomes:
+    ; Zadanie_skrĂłt_21_wrzeĹ›nia.docx
     documentName := RegExReplace(
         documentName,
-        "\s+[—-]\s+.*$"
+        "\s+[â€”-]\s+.*$"
     )
 
-    ; Quitar extensión original.
+    ; Remove the original document extension.
     documentName := RegExReplace(
         documentName,
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
@@ -158,22 +158,22 @@ WatchSaveDialog()
 
     if RegExMatch(documentName, "i)^kartoteka(?:\s|$)")
     {
-        documentName := StrReplace(documentName, Chr(0x0105), "a") ; ą
-        documentName := StrReplace(documentName, Chr(0x0142), "l") ; ł
-        documentName := StrReplace(documentName, Chr(0x0107), "c") ; ć
-        documentName := StrReplace(documentName, Chr(0x0119), "e") ; ę
-        documentName := StrReplace(documentName, Chr(0x0144), "n") ; ń
-        documentName := StrReplace(documentName, Chr(0x00F3), "o") ; ó
-        documentName := StrReplace(documentName, Chr(0x015B), "s") ; ś
-        documentName := StrReplace(documentName, Chr(0x017A), "z") ; ź
-        documentName := StrReplace(documentName, Chr(0x017C), "z") ; ż
+        documentName := StrReplace(documentName, Chr(0x0105), "a") ; Ä…
+        documentName := StrReplace(documentName, Chr(0x0142), "l") ; Ĺ‚
+        documentName := StrReplace(documentName, Chr(0x0107), "c") ; Ä‡
+        documentName := StrReplace(documentName, Chr(0x0119), "e") ; Ä™
+        documentName := StrReplace(documentName, Chr(0x0144), "n") ; Ĺ„
+        documentName := StrReplace(documentName, Chr(0x00F3), "o") ; Ăł
+        documentName := StrReplace(documentName, Chr(0x015B), "s") ; Ĺ›
+        documentName := StrReplace(documentName, Chr(0x017A), "z") ; Ĺş
+        documentName := StrReplace(documentName, Chr(0x017C), "z") ; ĹĽ
         documentName := RegExReplace(documentName, "\s+", "_")
 
         if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
             documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
     }
 
-    ; Sustituir caracteres no permitidos en Windows.
+    ; Replace characters that are not valid in Windows filenames.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"
 
     documentName := RegExReplace(
@@ -182,7 +182,7 @@ WatchSaveDialog()
         "_"
     )
 
-    ; Windows no permite terminar con espacio o punto.
+    ; Windows filenames cannot end with a space or period.
     documentName := RTrim(
         documentName,
         " ."
@@ -191,7 +191,7 @@ WatchSaveDialog()
     if (documentName = "")
         return
 
-    ; AQUÍ construimos el nombre definitivo.
+    ; Build the final output filename.
     filePath :=
         xpsFolder
         . "\"
@@ -200,7 +200,7 @@ WatchSaveDialog()
 
     Log(
         "Propuesto: '" . suggestedFileName .
-        "' | título: '" . lastDocumentTitle .
+        "' | tĂ­tulo: '" . lastDocumentTitle .
         "' | XPS: '" . filePath . "'"
     )
 
@@ -240,16 +240,16 @@ WatchSaveDialog()
         )
         Log("Campo tras escribir: '" . actualPath . "'")
 
-        ; Ya hemos procesado este diálogo.
+        ; The dialog has now been processed.
         handledDialog := hwnd
 
-        ; Ocultamos el diálogo antes de confirmar.
+        ; Make the dialog transparent before confirming.
         WinSetTransparent(
             0,
             "ahk_id " hwnd
         )
 
-        ; Guardar.
+        ; Confirm Save.
         ControlSend(
             "{Enter}",
             ,
