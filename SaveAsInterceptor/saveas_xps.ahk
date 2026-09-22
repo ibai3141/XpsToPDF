@@ -146,7 +146,7 @@ WatchSaveDialog()
     ; Zadanie_skrĂłt_21_wrzeĹ›nia.docx
     documentName := RegExReplace(
         documentName,
-        "\s+[â€”-]\s+.*$"
+        "\s+[-\x{2013}\x{2014}]\s+.*$"
     )
 
     ; Remove the original document extension.
@@ -154,24 +154,6 @@ WatchSaveDialog()
         documentName,
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
     )
-
-
-    if RegExMatch(documentName, "i)^kartoteka(?:\s|$)")
-    {
-        documentName := StrReplace(documentName, Chr(0x0105), "a") ; Ä…
-        documentName := StrReplace(documentName, Chr(0x0142), "l") ; Ĺ‚
-        documentName := StrReplace(documentName, Chr(0x0107), "c") ; Ä‡
-        documentName := StrReplace(documentName, Chr(0x0119), "e") ; Ä™
-        documentName := StrReplace(documentName, Chr(0x0144), "n") ; Ĺ„
-        documentName := StrReplace(documentName, Chr(0x00F3), "o") ; Ăł
-        documentName := StrReplace(documentName, Chr(0x015B), "s") ; Ĺ›
-        documentName := StrReplace(documentName, Chr(0x017A), "z") ; Ĺş
-        documentName := StrReplace(documentName, Chr(0x017C), "z") ; ĹĽ
-        documentName := RegExReplace(documentName, "\s+", "_")
-
-        if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
-            documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
-    }
 
     ; Replace characters that are not valid in Windows filenames.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"

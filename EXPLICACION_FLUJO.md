@@ -61,19 +61,8 @@ se transforma en:
 Zadanie_skrót_21_września
 ```
 
-Para el informe de Tytan `Kartoteka wpłat`, se reproduce la convención que
-utiliza Bullzip:
-
-```text
-Kartoteka_wplat_yyyy-MM-dd
-```
-
-La conversión incluye:
-
-- `ą` → `a`
-- `ł` → `l`
-- espacios → `_`
-- fecha actual al final
+The interceptor keeps the detected document name generic; it does not contain
+hard-coded rules for one particular report or application.
 
 ### Selección del formato
 
@@ -194,8 +183,8 @@ pd.DocumentName = filename;
 pd.Print();
 ```
 
-La solución actual obtiene el nombre desde el título de la ventana y aplica la
-convención conocida de Bullzip para los informes `Kartoteka`.
+La solución actual obtiene el nombre desde el título de la ventana y aplica
+únicamente la limpieza genérica necesaria para un nombre de archivo Windows.
 
 ### Código equivalente a `DocumentName`
 
@@ -223,18 +212,6 @@ documentName := RegExReplace(
 )
 
 filePath := xpsFolder . "\" . documentName . ".xps"
-```
-
-Para el formato de Tytan/Bullzip se aplica esta normalización:
-
-```autohotkey
-if RegExMatch(documentName, "i)^kartoteka(?:\s|$)")
-{
-    documentName := StrReplace(documentName, Chr(0x0105), "a") ; ą
-    documentName := StrReplace(documentName, Chr(0x0142), "l") ; ł
-    documentName := RegExReplace(documentName, "\s+", "_")
-    documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
-}
 ```
 
 Después escribe la ruta y confirma el cuadro:
