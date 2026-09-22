@@ -155,6 +155,16 @@ WatchSaveDialog()
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
     )
 
+    ; Match the Bullzip convention for every document, without hard-coding
+    ; any particular report name. Do not duplicate an existing date suffix.
+    if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
+        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
+
+    ; Match the Bullzip convention for every document, without hard-coding
+    ; any particular report name. Do not duplicate an existing date suffix.
+    if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
+        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
+
     ; Replace characters that are not valid in Windows filenames.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"
 
