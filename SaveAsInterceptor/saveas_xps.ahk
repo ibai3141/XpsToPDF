@@ -155,6 +155,24 @@ WatchSaveDialog()
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
     )
 
+
+    if RegExMatch(documentName, "i)^kartoteka(?:\s|$)")
+    {
+        documentName := StrReplace(documentName, Chr(0x0105), "a") ; ą
+        documentName := StrReplace(documentName, Chr(0x0142), "l") ; ł
+        documentName := StrReplace(documentName, Chr(0x0107), "c") ; ć
+        documentName := StrReplace(documentName, Chr(0x0119), "e") ; ę
+        documentName := StrReplace(documentName, Chr(0x0144), "n") ; ń
+        documentName := StrReplace(documentName, Chr(0x00F3), "o") ; ó
+        documentName := StrReplace(documentName, Chr(0x015B), "s") ; ś
+        documentName := StrReplace(documentName, Chr(0x017A), "z") ; ź
+        documentName := StrReplace(documentName, Chr(0x017C), "z") ; ż
+        documentName := RegExReplace(documentName, "\s+", "_")
+
+        if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
+            documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
+    }
+
     ; Sustituir caracteres no permitidos en Windows.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"
 
