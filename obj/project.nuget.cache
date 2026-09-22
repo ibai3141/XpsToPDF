@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "DZKZaSG7DBY=",
+  "dgSpecHash": "ZBpic/THzIY=",
   "success": true,
   "projectFilePath": "F:\\XpsToPdfService\\XpsToPdfService.csproj",
   "expectedPackageFiles": [
@@ -32,12 +32,8 @@
     "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.extensions.options\\9.0.8\\microsoft.extensions.options.9.0.8.nupkg.sha512",
     "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.extensions.options.configurationextensions\\9.0.8\\microsoft.extensions.options.configurationextensions.9.0.8.nupkg.sha512",
     "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.extensions.primitives\\9.0.8\\microsoft.extensions.primitives.9.0.8.nupkg.sha512",
-    "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.net.illink.tasks\\9.0.8\\microsoft.net.illink.tasks.9.0.8.nupkg.sha512",
     "C:\\Users\\Ibai\\.nuget\\packages\\system.diagnostics.eventlog\\9.0.8\\system.diagnostics.eventlog.9.0.8.nupkg.sha512",
-    "C:\\Users\\Ibai\\.nuget\\packages\\system.serviceprocess.servicecontroller\\9.0.8\\system.serviceprocess.servicecontroller.9.0.8.nupkg.sha512",
-    "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\9.0.8\\microsoft.netcore.app.runtime.win-x64.9.0.8.nupkg.sha512",
-    "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\9.0.8\\microsoft.windowsdesktop.app.runtime.win-x64.9.0.8.nupkg.sha512",
-    "C:\\Users\\Ibai\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\9.0.8\\microsoft.aspnetcore.app.runtime.win-x64.9.0.8.nupkg.sha512"
+    "C:\\Users\\Ibai\\.nuget\\packages\\system.serviceprocess.servicecontroller\\9.0.8\\system.serviceprocess.servicecontroller.9.0.8.nupkg.sha512"
   ],
   "logs": []
 }
