@@ -1,0 +1,4 @@
+C:\XpsToPdfService\publish\appsettings.Development.json
+C:\XpsToPdfService\publish\appsettings.json
+C:\XpsToPdfService\publish\XpsToPdfService.pdb
+C:\XpsToPdfService\publish\XpsToPdfService.exe
