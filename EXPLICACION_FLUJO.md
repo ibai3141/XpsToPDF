@@ -1,228 +1,84 @@
-# Flujo XPS → PDF
+# XPS to PDF Service — Current Flow
 
-## Objetivo
-
-El sistema automatiza este flujo:
+## Purpose
 
 ```text
-Aplicación de impresión
-    ↓
+Tytan / Biling SQL
+        |
+        v
 Microsoft XPS Document Writer
-    ↓
+        |
+        v
 SaveAs Interceptor (AutoHotkey)
-    ↓
-C:\XPS_OUT\NombreDelDocumento.xps
-    ↓
-XpsToPdfService
-    ↓
-GhostXPS
-    ↓
-C:\PDF\NombreDelDocumento.pdf
+        |
+        v
+C:\XPS_OUT\document-name.xps
+        |
+        v
+XpsToPdfService (Worker.cs)
+        |
+        v
+GhostXPS (gxpswin64.exe)
+        |
+        v
+C:\PDF\document-name.pdf
 ```
 
-## 1. Interceptor AutoHotkey
+Tytan/Biling SQL remains closed-source. This project intercepts the XPS save
+operation and converts the resulting XPS/OpenXPS package to PDF.
 
-Archivo:
+## 1. AutoHotkey interceptor
+
+File: `SaveAsInterceptor\saveas_xps.ahk`
+
+The interceptor runs in the interactive user session because a Windows service
+cannot directly control desktop windows.
+
+### Obtaining the document name
+
+Tytan displays the real print identifier in its modal `Printing` window:
 
 ```text
-SaveAsInterceptor\saveas_xps.ahk
+Page 1 of %_2026_000006_20260923_123547644
 ```
 
-El interceptor se ejecuta en la sesión interactiva del usuario. Un servicio de
-Windows no puede controlar directamente una ventana del escritorio, por eso
-esta parte debe ejecutarse como proceso de usuario.
-
-### Captura del nombre
-
-Antes de imprimir, el script guarda el título de la aplicación activa. Puede
-ser LibreOffice, Tytan u otra aplicación.
-
-Ejemplos:
-
-```text
-Zadanie_skrót_21_września.docx — LibreOffice Writer
-Kartoteka wpłat
-```
-
-Si XPS Writer propone un nombre genérico como `Printing` o `Drukowanie
-dokumentu`, el script utiliza el título capturado de la aplicación.
-
-### Limpieza del nombre
-
-El script elimina la extensión original y los sufijos de la aplicación:
-
-```text
-Zadanie_skrót_21_września.docx — LibreOffice Writer
-```
-
-se transforma en:
-
-```text
-Zadanie_skrót_21_września
-```
-
-The interceptor keeps the detected document name generic; it does not contain
-hard-coded rules for one particular report or application.
-
-### Selección del formato
-
-Microsoft XPS Document Writer puede seleccionar por defecto OpenXPS:
-
-```text
-OpenXPS (*.oxps)
-```
-
-El script intenta seleccionar explícitamente:
-
-```text
-XPS Document (*.xps)
-```
-
-También escribe el nombre en el campo de archivo y pulsa Enter para confirmar
-el guardado. La ventana se vuelve transparente para que el usuario no tenga
-que interactuar con ella.
-
-## 2. Servicio XpsToPdfService
-
-Archivo principal:
-
-```text
-Worker.cs
-```
-
-### Vigilancia de archivos
-
-El servicio observa:
-
-```text
-C:\XPS_OUT
-```
-
-Acepta tanto archivos `.xps` como `.oxps`.
-
-### Espera del archivo completo
-
-El evento `Created` puede llegar mientras Windows todavía está escribiendo el
-archivo. Antes de convertirlo, el servicio comprueba que:
-
-1. El archivo existe.
-2. No está vacío.
-3. Puede abrirse en modo exclusivo.
-4. Su tamaño y fecha permanecen estables durante varias comprobaciones.
-
-Esto evita convertir paquetes XPS incompletos.
-
-### Conversión
-
-El servicio ejecuta:
-
-```text
-gxpswin64.exe
-```
-
-GhostXPS es el intérprete adecuado para XPS/OpenXPS. Se utiliza el dispositivo
-`pdfwrite` para crear el PDF.
-
-La salida se crea primero como archivo temporal:
-
-```text
-Nombre.tmp.pdf
-```
-
-Solo cuando GhostXPS termina con código `0` se renombra a:
-
-```text
-Nombre.pdf
-```
-
-## 3. Problemas que se corrigieron
-
-### Ejecutable incorrecto
-
-Se utilizaba `gswin64c.exe` para leer XPS. El ejecutable correcto es
-`gxpswin64.exe`.
-
-### Archivo incompleto
-
-Una espera fija de dos segundos no garantizaba que el XPS hubiera terminado de
-escribirse. Se implementó una comprobación de estabilidad del archivo.
-
-### Extensión `.oxps`
-
-El servicio solo vigilaba `*.xps`, pero el controlador podía generar `*.oxps`.
-Ahora acepta ambos formatos.
-
-### Nombre repetido o corrupto
-
-El temporizador podía procesar varias veces la misma ventana y añadir varias
-extensiones `.xps`. También se llegó a reutilizar contenido antiguo del
-portapapeles, produciendo nombres como `av.oxps`.
-
-Ahora cada diálogo se procesa una sola vez y la ruta se escribe directamente
-en el control de nombre.
-
-### Ventana bloqueada
-
-Ocultar completamente la ventana con `WinHide` hacía que AutoHotkey perdiera
-acceso a sus controles. Se sustituyó por transparencia y se utiliza Enter como
-acción predeterminada de Guardar, en lugar de asumir que `Button1` siempre es el
-botón correcto.
-
-### Varias instancias del servicio
-
-Ejecutar varias instancias bloqueaba el ejecutable durante la compilación. Solo
-debe ejecutarse una instancia de `XpsToPdfService`.
-
-## 4. Limitación actual
-
-El proyecto no contiene el código fuente de la aplicación Tytan que llama a
-`PrintDocument.Print()`. Por eso no se puede modificar directamente esta línea:
-
-```csharp
-pd.DocumentName = filename;
-pd.Print();
-```
-
-La solución actual obtiene el nombre desde el título de la ventana y aplica
-únicamente la limpieza genérica necesaria para un nombre de archivo Windows.
-
-### Código equivalente a `DocumentName`
-
-Como no disponemos del código de Tytan, el interceptor captura la ventana activa
-antes de imprimir:
+The script reads that window and extracts the value after `Page 1 of`:
 
 ```autohotkey
-activeHwnd := WinExist("A")
-activeTitle := Trim(WinGetTitle("ahk_id " activeHwnd))
+windows := WinGetList("Printing")
+text := WinGetText("ahk_id " hwnd)
 
-if (activeTitle != "" && !IsGenericPrintJobName(activeTitle))
-    lastDocumentTitle := activeTitle
-```
-
-Cuando aparece el diálogo de XPS, utiliza ese título para crear la ruta:
-
-```autohotkey
-if (documentName = "" || IsGenericPrintJobName(documentName))
-    documentName := lastDocumentTitle
-
-documentName := RegExReplace(documentName, "\s+[—-]\s+.*$")
-documentName := RegExReplace(
-    documentName,
-    "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
+if RegExMatch(
+    text,
+    "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$",
+    &match
 )
-
-filePath := xpsFolder . "\" . documentName . ".xps"
+    pendingPrintName := Trim(match[1])
 ```
 
-Después escribe la ruta y confirma el cuadro:
+The name is then used when the XPS save dialog appears. The fallback order is:
+
+1. Name proposed in the XPS dialog.
+2. `DocumentName` from the Windows print queue.
+3. Name captured from Tytan's `Printing` window.
+4. Source application window title as a last resort.
+
+The save dialog is made transparent, filled automatically, and confirmed:
 
 ```autohotkey
-ControlSetText filePath, "Edit1", "ahk_id " hwnd
-WinSetTransparent 0, "ahk_id " hwnd
-ControlSend "{Enter}", , "ahk_id " hwnd
+WinSetTransparent(0, "ahk_id " hwnd)
+ControlSetText(filePath, "Edit1", "ahk_id " hwnd)
+ControlSend("{Enter}", , "ahk_id " hwnd)
 ```
 
-El servicio también acepta ambas extensiones:
+The script selects classic XPS when available, preventing the driver from
+defaulting to `.oxps`.
+
+## 2. XPS service
+
+File: `Worker.cs`
+
+The service watches `C:\XPS_OUT` and accepts both `.xps` and `.oxps` files:
 
 ```csharp
 if (!e.FullPath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &&
@@ -230,12 +86,96 @@ if (!e.FullPath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &&
     return;
 ```
 
-La solución ideal, si se obtiene el código de Tytan, es asignar directamente:
+Before conversion, it verifies that the file exists, is non-empty, can be
+opened exclusively, and remains stable across two quick checks. This prevents
+GhostXPS from reading an incomplete package.
+
+GhostXPS is started with the `pdfwrite` device:
 
 ```csharp
-pd.DocumentName = filename;
-pd.Print();
+psi.ArgumentList.Add("-dSAFER");
+psi.ArgumentList.Add("-dBATCH");
+psi.ArgumentList.Add("-dNOPAUSE");
+psi.ArgumentList.Add("-sDEVICE=pdfwrite");
+psi.ArgumentList.Add($"-sOutputFile={ghostOutputFile}");
+psi.ArgumentList.Add(xpsFile);
 ```
 
-De esa forma Microsoft XPS Document Writer recibiría el nombre correcto desde
-el origen, sin necesidad de inferirlo desde el título de la ventana.
+### Percent signs in names
+
+Tytan identifiers can begin with `%`. GhostXPS treats `%` in an output path as
+a pattern marker, so it is escaped only for the process argument:
+
+```csharp
+string ghostOutputFile = temporaryPdfFile.Replace("%", "%%");
+```
+
+The actual filename on disk remains unchanged.
+
+### Temporary PDF
+
+GhostXPS first writes `document.tmp.pdf`. Only after exit code `0` and a file
+existence check does the service publish the final PDF:
+
+```csharp
+File.Move(temporaryPdfFile, pdfFile, true);
+```
+
+This prevents incomplete PDFs from appearing in `C:\PDF`.
+
+## 3. Reliability protections
+
+Two service processes could race over the same temporary PDF. `Worker.cs` uses
+a named mutex so only one instance watches the folder:
+
+```csharp
+using Mutex instanceMutex =
+    new(false, "Global\\XpsToPdfService");
+```
+
+Each job reports service-side timing:
+
+```text
+Tiempo del trabajo XPS: 2.44 s | C:\XPS_OUT\document.xps
+```
+
+This measures XPS readiness plus GhostXPS conversion; it does not include all
+time spent by Tytan before the XPS is created.
+
+## 4. Problems corrected
+
+- Replaced the incorrect `gswin64c.exe` XPS invocation with `gxpswin64.exe`.
+- Added readiness checks for XPS files still being written.
+- Added support for both `.xps` and `.oxps`.
+- Prevented stale dialog values and repeated `.xps` extensions.
+- Selected the classic XPS format explicitly.
+- Escaped `%` names for GhostXPS.
+- Added a single-instance mutex to prevent duplicate conversion.
+- Added timing diagnostics.
+
+## 5. Performance limits
+
+The service no longer has an explicit conversion thread pool. New watcher
+events are handled without blocking detection, but Tytan normally creates XPS
+jobs sequentially. More threads therefore cannot accelerate the upstream step:
+
+```text
+Tytan creates XPS 1 -> XPS 2 -> XPS 3
+```
+
+The main remaining cost is Microsoft XPS Document Writer creating each XPS,
+followed by GhostXPS rendering. BullZip is faster because it generates PDF
+directly and avoids the intermediate XPS stage.
+
+## 6. Source integration
+
+The ideal source-side code would be:
+
+```csharp
+printDocument.DocumentName = filename;
+printDocument.Print();
+```
+
+That code is not available in this repository because Tytan/Biling SQL is
+closed-source. The interceptor therefore reads the identifier exposed by the
+`Printing` window and uses the source window title only as a fallback.
