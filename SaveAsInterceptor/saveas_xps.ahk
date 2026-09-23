@@ -105,18 +105,25 @@ WatchSaveDialog()
         }
     }
 
-    ; Never use the source window title as a filename. It is only a UI label,
-    ; such as "Obroty księgowe", and is not Tytan's DocumentName.
+    ; Last-resort fallback for applications that do not publish DocumentName.
+    ; The cleanup below removes the application suffix from the window title.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
-        Log(
-            "ERROR: no se obtuvo DocumentName de XPS ni de la cola. " .
-            "Propuesto='" . suggestedFileName .
-            "' | tĂ­tulo='" . lastDocumentTitle . "'"
-        )
-        handledDialog := hwnd
-        ControlSend("{Escape}", , "ahk_id " hwnd)
-        return
+        if (lastDocumentTitle != "" && !IsGenericPrintJobName(lastDocumentTitle))
+        {
+            documentName := lastDocumentTitle
+            Log("AVISO: se usa el título de la ventana como nombre: '" . lastDocumentTitle . "'")
+        }
+        else
+        {
+            Log(
+                "ERROR: no se obtuvo DocumentName de XPS, de la cola ni del título. " .
+                "Propuesto='" . suggestedFileName . "'"
+            )
+            handledDialog := hwnd
+            ControlSend("{Escape}", , "ahk_id " hwnd)
+            return
+        }
     }
 
     ; Example:
