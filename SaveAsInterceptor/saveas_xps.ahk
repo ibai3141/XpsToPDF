@@ -8,12 +8,16 @@ DirCreate xpsFolder
 
 lastDocumentTitle := ""
 lastDocumentHwnd := 0
+pendingPrintName := ""
 
 ; Track the source document window and monitor the save dialog.
 SetTimer RememberDocumentTitle, 50
 
 ; Track the source document window and monitor the save dialog.
 SetTimer WatchSaveDialog, 25
+
+; Capture the document identifier shown by Tytan's modal "Printing" window.
+SetTimer CapturePrintingName, 25
 
 
 RememberDocumentTitle()
@@ -50,7 +54,7 @@ RememberDocumentTitle()
 
 WatchSaveDialog()
 {
-    global xpsFolder, lastDocumentTitle
+    global xpsFolder, lastDocumentTitle, pendingPrintName
 
     static handledDialog := 0
 
@@ -107,6 +111,16 @@ WatchSaveDialog()
 
     ; Last-resort fallback for applications that do not publish DocumentName.
     ; The cleanup below removes the application suffix from the window title.
+    if (documentName = "" || IsGenericPrintJobName(documentName))
+    {
+        if (pendingPrintName != "" && !IsGenericPrintJobName(pendingPrintName))
+        {
+            documentName := pendingPrintName
+            pendingPrintName := ""
+            Log("INFO: nombre obtenido de la ventana Printing: '" . documentName . "'")
+        }
+    }
+
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
         if (lastDocumentTitle != "" && !IsGenericPrintJobName(lastDocumentTitle))
@@ -301,6 +315,39 @@ GetLatestPrintJobDocumentName()
     }
 
     return RegExReplace(latestName, "i)(?:\.xps|\.oxps)+$", "")
+}
+
+
+CapturePrintingName()
+{
+    global pendingPrintName
+
+    try
+    {
+        windows := WinGetList("Printing")
+        for _, hwnd in windows
+        {
+            if !WinExist("ahk_id " hwnd)
+                continue
+
+            text := WinGetText("ahk_id " hwnd)
+            if (text = "")
+                continue
+
+            ; Tytan displays the identifier in a line such as:
+            ; "Page 1 of %_2026_000013_20260923_112101037".
+            if RegExMatch(text, "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$", &match)
+            {
+                candidate := Trim(match[1])
+                if (candidate != "" && !IsGenericPrintJobName(candidate))
+                    pendingPrintName := candidate
+            }
+        }
+    }
+    catch
+    {
+        return
+    }
 }
 
 Log(message)

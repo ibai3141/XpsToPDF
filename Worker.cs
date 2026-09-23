@@ -99,7 +99,11 @@ public class Worker : BackgroundService
             psi.ArgumentList.Add("-dBATCH");
             psi.ArgumentList.Add("-dNOPAUSE");
             psi.ArgumentList.Add("-sDEVICE=pdfwrite");
-            psi.ArgumentList.Add($"-sOutputFile={temporaryPdfFile}");
+            // GhostXPS treats '%' as an output-file pattern marker. Escape it
+            // for the command-line argument so names such as "%_2026_..."
+            // remain literal filenames on disk.
+            string ghostOutputFile = temporaryPdfFile.Replace("%", "%%");
+            psi.ArgumentList.Add($"-sOutputFile={ghostOutputFile}");
             psi.ArgumentList.Add(xpsFile);
 
             using Process process = new Process
@@ -123,9 +127,19 @@ public class Worker : BackgroundService
             if (!string.IsNullOrWhiteSpace(error))
                 Console.Error.WriteLine(error);
 
-            if (process.ExitCode != 0 || !File.Exists(temporaryPdfFile))
+            if (process.ExitCode != 0)
             {
-                Console.Error.WriteLine("No se publicó el PDF porque GhostXPS no terminó correctamente.");
+                Console.Error.WriteLine(
+                    $"No se publicó el PDF porque GhostXPS terminó con código {process.ExitCode}."
+                );
+                return;
+            }
+
+            if (!File.Exists(temporaryPdfFile))
+            {
+                Console.Error.WriteLine(
+                    $"GhostXPS terminó con código 0, pero no creó el archivo temporal: {temporaryPdfFile}"
+                );
                 return;
             }
 
