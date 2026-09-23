@@ -287,6 +287,8 @@ IsGenericPrintJobName(name)
     return normalizedName = "printing"
         || normalizedName = "print"
         || normalizedName = "drukowanie dokumentu"
+        || normalizedName = "drukowanie dokumentów"
+        || normalizedName = "drukowanie dokumentow"
         || normalizedName = "drukowanie"
         || normalizedName = "save print output as"
         || normalizedName = "zapisz wydruk jako"
