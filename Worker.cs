@@ -18,6 +18,22 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
+        // Only one service instance may watch and convert the XPS folder.
+        // Without this guard, two processes can race over the same temporary PDF.
+        using Mutex instanceMutex = new(false, "Global\\XpsToPdfService");
+        try
+        {
+            if (!instanceMutex.WaitOne(0))
+            {
+                Console.Error.WriteLine("Ya existe otra instancia de XpsToPdfService.");
+                return;
+            }
+        }
+        catch (AbandonedMutexException)
+        {
+            // The previous process ended unexpectedly; this instance owns the mutex.
+        }
+
         using FileSystemWatcher watcher = new FileSystemWatcher();
 
         watcher.Path = XpsFolder;
@@ -166,9 +182,10 @@ public class Worker : BackgroundService
 
     private static async Task<bool> WaitForFileReadyAsync(string filePath)
     {
-        const int maxAttempts = 30;
-        // Two stable checks are enough once the writer has released the file.
-        // The shorter interval avoids adding several seconds to every job.
+        // Keep enough retries for slower XPS jobs while polling more often.
+        const int maxAttempts = 60;
+        // Two quick checks balance startup latency with protection against
+        // reading an XPS while the writer is still closing it.
         const int stableChecksRequired = 2;
         long previousLength = -1;
         DateTime previousWriteTime = DateTime.MinValue;
@@ -203,7 +220,7 @@ public class Worker : BackgroundService
                 stableChecks = 0;
             }
 
-            await Task.Delay(TimeSpan.FromMilliseconds(300));
+            await Task.Delay(TimeSpan.FromMilliseconds(100));
         }
 
         return false;

@@ -7,7 +7,6 @@ xpsFolder := "C:\XPS_OUT"
 DirCreate xpsFolder
 
 lastDocumentTitle := ""
-lastDocumentHwnd := 0
 pendingPrintName := ""
 
 ; Track the source document window and monitor the save dialog.
@@ -22,7 +21,7 @@ SetTimer CapturePrintingName, 25
 
 RememberDocumentTitle()
 {
-    global lastDocumentTitle, lastDocumentHwnd
+    global lastDocumentTitle
 
     ; Keep the title captured before the save dialog appeared.
     if FindSaveDialog()
@@ -46,7 +45,6 @@ RememberDocumentTitle()
         && !InStr(activeTitle, "AutoHotkey") && !InStr(activeTitle, "XpsToPdfService"))
     {
         lastDocumentTitle := activeTitle
-        lastDocumentHwnd := activeHwnd
     }
     return
 }
@@ -215,7 +213,7 @@ WatchSaveDialog()
         )
         ; Allow the dialog control to process WM_SETTEXT without adding a
         ; noticeable delay to every print job.
-        Sleep 75
+        Sleep 10
 
         actualPath := ControlGetText(
             "Edit1",
