@@ -34,6 +34,7 @@ public class Worker : BackgroundService
 
         watcher.EnableRaisingEvents = true;
 
+
         while (!stoppingToken.IsCancellationRequested)
         {
             await Task.Delay(1000, stoppingToken);
