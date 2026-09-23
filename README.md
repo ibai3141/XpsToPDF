@@ -56,12 +56,10 @@ if RegExMatch(
     pendingPrintName := Trim(match[1])
 ```
 
-The name is then used when the XPS save dialog appears. The fallback order is:
-
-1. Name proposed in the XPS dialog.
-2. `DocumentName` from the Windows print queue.
-3. Name captured from Tytan's `Printing` window.
-4. Source application window title as a last resort.
+The name is then used when the XPS save dialog appears. Tytan's `Printing`
+window is the authoritative source. The Windows print queue is retained only
+as a technical fallback if the modal window is missed. The XPS-proposed name
+and the source application window title are not used as document names.
 
 The save dialog is made transparent, filled automatically, and confirmed:
 
@@ -178,4 +176,4 @@ printDocument.Print();
 
 That code is not available in this repository because Tytan/Biling SQL is
 closed-source. The interceptor therefore reads the identifier exposed by the
-`Printing` window and uses the source window title only as a fallback.
+`Printing` window and uses the print queue only as a technical fallback.

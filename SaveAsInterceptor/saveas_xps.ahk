@@ -6,53 +6,18 @@ SetControlDelay -1
 xpsFolder := "C:\XPS_OUT"
 DirCreate xpsFolder
 
-lastDocumentTitle := ""
 pendingPrintName := ""
 
-; Track the source document window and monitor the save dialog.
-SetTimer RememberDocumentTitle, 50
-
-; Track the source document window and monitor the save dialog.
+; Monitor the XPS save dialog.
 SetTimer WatchSaveDialog, 25
 
 ; Capture the document identifier shown by Tytan's modal "Printing" window.
 SetTimer CapturePrintingName, 25
 
 
-RememberDocumentTitle()
-{
-    global lastDocumentTitle
-
-    ; Keep the title captured before the save dialog appeared.
-    if FindSaveDialog()
-        return
-
-    ; Use the application active immediately before printing. The old code
-    ; below searched only LibreOffice windows, so Tytan reused an old title.
-    activeHwnd := WinExist("A")
-    if !activeHwnd
-        return
-    try
-    {
-        activeClass := WinGetClass("ahk_id " activeHwnd)
-        activeTitle := Trim(WinGetTitle("ahk_id " activeHwnd))
-    }
-    catch
-    {
-        return
-    }
-    if (activeTitle != "" && activeClass != "#32770" && !IsGenericPrintJobName(activeTitle)
-        && !InStr(activeTitle, "AutoHotkey") && !InStr(activeTitle, "XpsToPdfService"))
-    {
-        lastDocumentTitle := activeTitle
-    }
-    return
-}
-
-
 WatchSaveDialog()
 {
-    global xpsFolder, lastDocumentTitle, pendingPrintName
+    global xpsFolder, pendingPrintName
 
     static handledDialog := 0
 
@@ -91,13 +56,16 @@ WatchSaveDialog()
 
     SplitPath suggestedPath, &suggestedFileName
 
-    ; Remove the XPS extension if Windows supplies one.
-    documentName := RegExReplace(
-        suggestedFileName,
-        "i)(?:\.xps|\.oxps)+$"
-    )
+    ; Tytan's Printing window is the authoritative source for the document name.
+    documentName := ""
+    if (pendingPrintName != "" && !IsGenericPrintJobName(pendingPrintName))
+    {
+        documentName := pendingPrintName
+        pendingPrintName := ""
+        Log("INFO: name obtained from the Printing window: '" . documentName . "'")
+    }
 
-    ; If Windows does not provide a useful name, use the print queue once.
+    ; Keep the print queue as a technical fallback if the modal window was missed.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
         queueName := GetLatestPrintJobDocumentName()
@@ -107,35 +75,12 @@ WatchSaveDialog()
         }
     }
 
-    ; Last-resort fallback for applications that do not publish DocumentName.
-    ; The cleanup below removes the application suffix from the window title.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
-        if (pendingPrintName != "" && !IsGenericPrintJobName(pendingPrintName))
-        {
-            documentName := pendingPrintName
-            pendingPrintName := ""
-            Log("INFO: name obtained from the Printing window: '" . documentName . "'")
-        }
-    }
-
-    if (documentName = "" || IsGenericPrintJobName(documentName))
-    {
-        if (lastDocumentTitle != "" && !IsGenericPrintJobName(lastDocumentTitle))
-        {
-            documentName := lastDocumentTitle
-            Log("WARNING: using the window title as the document name: '" . lastDocumentTitle . "'")
-        }
-        else
-        {
-            Log(
-                "ERROR: no DocumentName was obtained from XPS, the queue, or the title. " .
-                "Suggested='" . suggestedFileName . "'"
-            )
-            handledDialog := hwnd
-            ControlSend("{Escape}", , "ahk_id " hwnd)
-            return
-        }
+        Log("ERROR: no document name was obtained from the Printing window or print queue.")
+        handledDialog := hwnd
+        ControlSend("{Escape}", , "ahk_id " hwnd)
+        return
     }
 
     ; Example:
@@ -177,11 +122,7 @@ WatchSaveDialog()
     ; Build the output filename supplied to Microsoft XPS Document Writer.
     filePath := xpsFolder . "\" . documentName . ".xps"
 
-    Log(
-        "Suggested: '" . suggestedFileName .
-        "' | title: '" . lastDocumentTitle .
-        "' | XPS: '" . filePath . "'"
-    )
+    Log("XPS output: '" . filePath . "'")
 
     try
     {
