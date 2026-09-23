@@ -45,39 +45,6 @@ RememberDocumentTitle()
         lastDocumentHwnd := activeHwnd
     }
     return
-
-    windows := WinGetList()
-
-    for _, hwnd in windows
-    {
-        try
-        {
-            class := WinGetClass("ahk_id " hwnd)
-            title := Trim(WinGetTitle("ahk_id " hwnd))
-        }
-        catch
-        {
-            continue
-        }
-
-        ; Legacy LibreOffice-only scan retained for compatibility.
-        if !InStr(class, "SALFRAME")
-            continue
-
-        if (title = "")
-            continue
-
-        ; Never store generic print-job titles.
-        if IsGenericPrintJobName(title)
-            continue
-
-        ; Store the last real LibreOffice document title.
-        lastDocumentTitle := title
-        lastDocumentHwnd := hwnd
-
-        ; The relevant window has been found.
-        break
-    }
 }
 
 
@@ -97,6 +64,13 @@ WatchSaveDialog()
 
     ; Do not process the same dialog more than once.
     if (hwnd = handledDialog)
+        return
+
+    ; Hide the dialog immediately. Name lookup and path assignment can take
+    ; a moment, and the user must never see the Save Print Output window.
+    try
+        WinSetTransparent(0, "ahk_id " hwnd)
+    catch TargetError
         return
 
     try
@@ -121,8 +95,6 @@ WatchSaveDialog()
         "i)(?:\.xps|\.oxps)+$"
     )
 
-    nameFromPrintQueue := false
-
     ; If Windows does not provide a useful name, use the print queue first.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
@@ -130,7 +102,6 @@ WatchSaveDialog()
         if (queueName != "" && !IsGenericPrintJobName(queueName))
         {
             documentName := queueName
-            nameFromPrintQueue := true
         }
         else
             documentName := lastDocumentTitle
@@ -164,10 +135,9 @@ WatchSaveDialog()
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
     )
 
-    ; Preserve the name supplied by Tytan. Add a unique fallback suffix only
-    ; when neither the save dialog nor the print queue exposed a name.
-    if !nameFromPrintQueue && documentName = lastDocumentTitle
-        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd_HHmmssfff")
+    ; Preserve the name supplied by Tytan or by the source application.
+    ; Do not add a date here: Tytan already includes dates in its names, and
+    ; repeated prints are handled below with _2, _3, and so on.
 
     ; Replace characters that are not valid in Windows filenames.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"
@@ -187,12 +157,18 @@ WatchSaveDialog()
     if (documentName = "")
         return
 
-    ; Build the final output filename.
-    filePath :=
-        xpsFolder
-        . "\"
-        . documentName
-        . ".xps"
+    ; Build a unique output filename. The same document can be printed more
+    ; than once, and the XPS dialog must not ask about overwriting a file.
+    baseDocumentName := documentName
+    copyNumber := 1
+    filePath := xpsFolder . "\" . documentName . ".xps"
+
+    while FileExist(filePath)
+    {
+        copyNumber++
+        documentName := baseDocumentName . "_" . copyNumber
+        filePath := xpsFolder . "\" . documentName . ".xps"
+    }
 
     Log(
         "Propuesto: '" . suggestedFileName .
@@ -239,12 +215,6 @@ WatchSaveDialog()
         ; The dialog has now been processed.
         handledDialog := hwnd
 
-        ; Make the dialog transparent before confirming.
-        WinSetTransparent(
-            0,
-            "ahk_id " hwnd
-        )
-
         ; Confirm Save.
         ControlSend(
             "{Enter}",
@@ -284,6 +254,14 @@ IsGenericPrintJobName(name)
         Trim(name)
     )
 
+    ; File Explorer can become the active window after a print. Its title is
+    ; not a document name and must never be used for an output file.
+    if RegExMatch(normalizedName, "i)\s-\sfile explorer$")
+        return true
+
+    if RegExMatch(normalizedName, "i)^xps_out(?:\s-\s.*)?$")
+        return true
+
     return normalizedName = "printing"
         || normalizedName = "print"
         || normalizedName = "drukowanie dokumentu"
@@ -297,33 +275,58 @@ IsGenericPrintJobName(name)
 
 GetLatestPrintJobDocumentName()
 {
-    latestName := ""
-    latestJobId := -1
-
-    try
+    ; The print dialog can appear before the spooler publishes the job.
+    ; Poll briefly while the dialog remains hidden instead of falling back to
+    ; the generic application title too early.
+    loop 30
     {
-        wmi := ComObjGet("winmgmts:")
-        jobs := wmi.ExecQuery("SELECT Name, Document, JobId FROM Win32_PrintJob")
+        latestName := ""
+        latestJobId := -1
 
-        for job in jobs
+        try
         {
-            if !InStr(StrLower(job.Name), "xps")
-                continue
+            wmi := ComObjGet("winmgmts:")
+            jobs := wmi.ExecQuery(
+                "SELECT Name, Document, JobId FROM Win32_PrintJob"
+            )
 
-            jobId := Integer(job.JobId)
-            if (jobId > latestJobId && Trim(job.Document) != "")
+            for job in jobs
             {
-                latestJobId := jobId
-                latestName := Trim(job.Document)
+                if !InStr(StrLower(job.Name), "xps")
+                    continue
+
+                document := Trim(job.Document)
+                if (document = "" || IsGenericPrintJobName(document))
+                    continue
+
+                jobId := Integer(job.JobId)
+                if (jobId > latestJobId)
+                {
+                    latestJobId := jobId
+                    latestName := document
+                }
             }
         }
-    }
-    catch
-    {
-        return ""
+        catch
+        {
+            latestName := ""
+        }
+
+        if (latestName != "")
+        {
+            latestName := RegExReplace(
+                latestName,
+                "i)(?:\.xps|\.oxps)+$"
+            )
+            Log("Nombre obtenido de la cola: '" . latestName . "'")
+            return latestName
+        }
+
+        Sleep 100
     }
 
-    return latestName
+    Log("La cola XPS no expuso DocumentName después de 3 segundos")
+    return ""
 }
 
 Log(message)
