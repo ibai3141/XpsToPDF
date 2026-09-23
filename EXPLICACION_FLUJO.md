@@ -136,7 +136,7 @@ using Mutex instanceMutex =
 Each job reports service-side timing:
 
 ```text
-Tiempo del trabajo XPS: 2.44 s | C:\XPS_OUT\document.xps
+XPS job time: 2.44 s | C:\XPS_OUT\document.xps
 ```
 
 This measures XPS readiness plus GhostXPS conversion; it does not include all

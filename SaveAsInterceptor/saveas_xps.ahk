@@ -115,7 +115,7 @@ WatchSaveDialog()
         {
             documentName := pendingPrintName
             pendingPrintName := ""
-            Log("INFO: nombre obtenido de la ventana Printing: '" . documentName . "'")
+            Log("INFO: name obtained from the Printing window: '" . documentName . "'")
         }
     }
 
@@ -124,13 +124,13 @@ WatchSaveDialog()
         if (lastDocumentTitle != "" && !IsGenericPrintJobName(lastDocumentTitle))
         {
             documentName := lastDocumentTitle
-            Log("AVISO: se usa el título de la ventana como nombre: '" . lastDocumentTitle . "'")
+            Log("WARNING: using the window title as the document name: '" . lastDocumentTitle . "'")
         }
         else
         {
             Log(
-                "ERROR: no se obtuvo DocumentName de XPS, de la cola ni del título. " .
-                "Propuesto='" . suggestedFileName . "'"
+                "ERROR: no DocumentName was obtained from XPS, the queue, or the title. " .
+                "Suggested='" . suggestedFileName . "'"
             )
             handledDialog := hwnd
             ControlSend("{Escape}", , "ahk_id " hwnd)
@@ -178,8 +178,8 @@ WatchSaveDialog()
     filePath := xpsFolder . "\" . documentName . ".xps"
 
     Log(
-        "Propuesto: '" . suggestedFileName .
-        "' | tĂ­tulo: '" . lastDocumentTitle .
+        "Suggested: '" . suggestedFileName .
+        "' | title: '" . lastDocumentTitle .
         "' | XPS: '" . filePath . "'"
     )
 
@@ -219,7 +219,7 @@ WatchSaveDialog()
             "Edit1",
             "ahk_id " hwnd
         )
-        Log("Campo tras escribir: '" . actualPath . "'")
+        Log("Field after writing: '" . actualPath . "'")
 
         ; The dialog has now been processed.
         handledDialog := hwnd

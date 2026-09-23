@@ -25,7 +25,7 @@ public class Worker : BackgroundService
         {
             if (!instanceMutex.WaitOne(0))
             {
-                Console.Error.WriteLine("Ya existe otra instancia de XpsToPdfService.");
+                Console.Error.WriteLine("Another instance of XpsToPdfService is already running.");
                 return;
             }
         }
@@ -76,17 +76,17 @@ public class Worker : BackgroundService
         Stopwatch totalTimer = Stopwatch.StartNew();
         try
         {
-            Console.WriteLine($"XPS detectado: {xpsFile}");
+            Console.WriteLine($"XPS detected: {xpsFile}");
 
             if (!File.Exists(GhostXps))
             {
-                Console.Error.WriteLine($"No se encuentra GhostXPS: {GhostXps}");
+                Console.Error.WriteLine($"GhostXPS was not found: {GhostXps}");
                 return;
             }
 
             if (!await WaitForFileReadyAsync(xpsFile))
             {
-                Console.Error.WriteLine($"El XPS no terminó de escribirse: {xpsFile}");
+                Console.Error.WriteLine($"The XPS file was not completely written: {xpsFile}");
                 return;
             }
 
@@ -101,8 +101,8 @@ public class Worker : BackgroundService
                 Path.GetFileNameWithoutExtension(xpsFile) + ".tmp.pdf"
             );
 
-            Console.WriteLine($"Convirtiendo: {xpsFile}");
-            Console.WriteLine($"PDF destino: {pdfFile}");
+            Console.WriteLine($"Converting: {xpsFile}");
+            Console.WriteLine($"PDF destination: {pdfFile}");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
@@ -138,7 +138,7 @@ public class Worker : BackgroundService
 
             await process.WaitForExitAsync();
 
-            Console.WriteLine($"GhostXPS terminó con código: {process.ExitCode}");
+            Console.WriteLine($"GhostXPS exited with code: {process.ExitCode}");
             if (!string.IsNullOrWhiteSpace(output))
                 Console.WriteLine(output);
             if (!string.IsNullOrWhiteSpace(error))
@@ -147,7 +147,7 @@ public class Worker : BackgroundService
             if (process.ExitCode != 0)
             {
                 Console.Error.WriteLine(
-                    $"No se publicó el PDF porque GhostXPS terminó con código {process.ExitCode}."
+                    $"PDF was not published because GhostXPS exited with code {process.ExitCode}."
                 );
                 return;
             }
@@ -155,13 +155,13 @@ public class Worker : BackgroundService
             if (!File.Exists(temporaryPdfFile))
             {
                 Console.Error.WriteLine(
-                    $"GhostXPS terminó con código 0, pero no creó el archivo temporal: {temporaryPdfFile}"
+                    $"GhostXPS exited with code 0 but did not create the temporary file: {temporaryPdfFile}"
                 );
                 return;
             }
 
             File.Move(temporaryPdfFile, pdfFile, true);
-            Console.WriteLine($"PDF creado: {pdfFile}");
+            Console.WriteLine($"PDF created: {pdfFile}");
 
         }
         catch (Exception ex)
@@ -174,7 +174,7 @@ public class Worker : BackgroundService
                 totalTimer.Stop();
 
             Console.WriteLine(
-                $"Tiempo del trabajo XPS: {totalTimer.Elapsed.TotalSeconds:F2} s | {xpsFile}"
+                $"XPS job time: {totalTimer.Elapsed.TotalSeconds:F2} s | {xpsFile}"
             );
             processing.TryRemove(xpsFile, out _);
         }
@@ -199,7 +199,7 @@ public class Worker : BackgroundService
                 file.Refresh();
 
                 if (!file.Exists || file.Length == 0)
-                    throw new IOException("El archivo aún no existe o está vacío.");
+                    throw new IOException("The file does not exist yet or is empty.");
 
                 // FileShare.None confirms that the writer has closed the XPS.
                 using FileStream stream = new(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
