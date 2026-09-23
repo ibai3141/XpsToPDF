@@ -103,19 +103,19 @@ WatchSaveDialog()
         {
             documentName := queueName
         }
-        else
-            documentName := lastDocumentTitle
     }
 
-    ; If no source-document name is available,
-    ; do nothing.
+    ; Never use the source window title as a filename. It is only a UI label,
+    ; such as "Obroty księgowe", and is not Tytan's DocumentName.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
         Log(
-            "ERROR: no se pudo obtener el nombre real. " .
+            "ERROR: no se obtuvo DocumentName de XPS ni de la cola. " .
             "Propuesto='" . suggestedFileName .
             "' | tĂ­tulo='" . lastDocumentTitle . "'"
         )
+        handledDialog := hwnd
+        ControlSend("{Escape}", , "ahk_id " hwnd)
         return
     }
 
