@@ -11,4 +11,11 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="9.0.8" />
   </ItemGroup>
+
+  <!-- Keep local probe build artifacts outside the service compilation. -->
+  <ItemGroup>
+    <Compile Remove="Tools\**" />
+    <None Remove="Tools\**" />
+  </ItemGroup>
+
 </Project>
