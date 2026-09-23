@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("XpsToPdfService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+eaba8d6125424294305c630e6522f42115a25c44")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f6ad73e4bea60c5d8cefe36b53127e672e84baa5")]
 [assembly: System.Reflection.AssemblyProductAttribute("XpsToPdfService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("XpsToPdfService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
