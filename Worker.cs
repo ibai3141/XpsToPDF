@@ -57,6 +57,7 @@ public class Worker : BackgroundService
 
     private async Task ConvertXpsToPdf(string xpsFile)
     {
+        Stopwatch totalTimer = Stopwatch.StartNew();
         try
         {
             Console.WriteLine($"XPS detectado: {xpsFile}");
@@ -153,6 +154,12 @@ public class Worker : BackgroundService
         }
         finally
         {
+            if (totalTimer.IsRunning)
+                totalTimer.Stop();
+
+            Console.WriteLine(
+                $"Tiempo del trabajo XPS: {totalTimer.Elapsed.TotalSeconds:F2} s | {xpsFile}"
+            );
             processing.TryRemove(xpsFile, out _);
         }
     }
@@ -160,7 +167,9 @@ public class Worker : BackgroundService
     private static async Task<bool> WaitForFileReadyAsync(string filePath)
     {
         const int maxAttempts = 30;
-        const int stableChecksRequired = 3;
+        // Two stable checks are enough once the writer has released the file.
+        // The shorter interval avoids adding several seconds to every job.
+        const int stableChecksRequired = 2;
         long previousLength = -1;
         DateTime previousWriteTime = DateTime.MinValue;
         int stableChecks = 0;
@@ -194,7 +203,7 @@ public class Worker : BackgroundService
                 stableChecks = 0;
             }
 
-            await Task.Delay(TimeSpan.FromSeconds(1));
+            await Task.Delay(TimeSpan.FromMilliseconds(300));
         }
 
         return false;

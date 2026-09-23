@@ -213,7 +213,9 @@ WatchSaveDialog()
             "Edit1",
             "ahk_id " hwnd
         )
-        Sleep 150
+        ; Allow the dialog control to process WM_SETTEXT without adding a
+        ; noticeable delay to every print job.
+        Sleep 75
 
         actualPath := ControlGetText(
             "Edit1",
