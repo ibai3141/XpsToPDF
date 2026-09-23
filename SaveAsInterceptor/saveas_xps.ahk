@@ -21,7 +21,6 @@ RememberDocumentTitle()
     global lastDocumentTitle, lastDocumentHwnd
 
     ; Keep the title captured before the save dialog appeared.
-    ; Keep the title captured before the save dialog appeared.
     if FindSaveDialog()
         return
 
@@ -122,13 +121,17 @@ WatchSaveDialog()
         "i)(?:\.xps|\.oxps)+$"
     )
 
-    ; If Windows does not provide a useful name,
-    ; use the real source-document title.
+    nameFromPrintQueue := false
+
+    ; If Windows does not provide a useful name, use the print queue first.
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
         queueName := GetLatestPrintJobDocumentName()
         if (queueName != "" && !IsGenericPrintJobName(queueName))
+        {
             documentName := queueName
+            nameFromPrintQueue := true
+        }
         else
             documentName := lastDocumentTitle
     }
@@ -161,15 +164,10 @@ WatchSaveDialog()
         "i)\.(?:docx|doc|odt|rtf|txt|xlsx|xls|ods|pptx|ppt|odp|pdf)$"
     )
 
-    ; Match the Bullzip convention for every document, without hard-coding
-    ; any particular report name. Do not duplicate an existing date suffix.
-    if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
-        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
-
-    ; Match the Bullzip convention for every document, without hard-coding
-    ; any particular report name. Do not duplicate an existing date suffix.
-    if !RegExMatch(documentName, "\d{4}-\d{2}-\d{2}$")
-        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd")
+    ; Preserve the name supplied by Tytan. Add a unique fallback suffix only
+    ; when neither the save dialog nor the print queue exposed a name.
+    if !nameFromPrintQueue && documentName = lastDocumentTitle
+        documentName .= "_" . FormatTime(A_Now, "yyyy-MM-dd_HHmmssfff")
 
     ; Replace characters that are not valid in Windows filenames.
     invalidPattern := "[<>:" . Chr(34) . "/\\|?*\x00-\x1F]"
@@ -311,7 +309,7 @@ GetLatestPrintJobDocumentName()
                 continue
 
             jobId := Integer(job.JobId)
-            if (jobId > latestJobId)
+            if (jobId > latestJobId && Trim(job.Document) != "")
             {
                 latestJobId := jobId
                 latestName := Trim(job.Document)
