@@ -32,7 +32,8 @@ SetTimer WatchSaveDialog, 25
 SetTimer CapturePrintingName, 25
 ```
 
-Tytan's `Printing` window contains the authoritative identifier, for example:
+Tytan's `Printing` or Polish `Drukowanie` window contains the authoritative
+identifier, for example:
 
 ```text
 Page 1 of %_2026_000006_20260923_123547644
@@ -59,7 +60,7 @@ ControlSend("{Enter}", , "ahk_id " hwnd)
 
 The script selects `XPS Document (*.xps)` when available, preventing the
 driver from selecting `.oxps`. The Windows print queue (`Win32_PrintJob`) is
-retained as a technical fallback if the `Printing` window is missed. The
+retained as a technical fallback if the `Printing`/`Drukowanie` window is missed. The
 application window title and the XPS-proposed name are not used as names.
 
 ## Worker service

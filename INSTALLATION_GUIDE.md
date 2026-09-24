@@ -8,7 +8,7 @@ The package automates:
 Tytan -> Microsoft XPS Document Writer -> AutoHotkey -> XpsToPdfService -> GhostXPS -> PDF
 ```
 
-It includes the Windows service, `gxpswin64.exe`, `AutoHotkey64.exe`,
+It includes the Windows service, `gxpswin64.exe`, `AutoHotkey32.exe`, and `AutoHotkey64.exe`,
 `saveas_xps.ahk`, `appsettings.json`, `install.ps1`, and `uninstall.ps1`.
 GhostXPS and AutoHotkey do not need to be installed separately.
 

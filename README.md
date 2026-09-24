@@ -29,7 +29,7 @@ scripts required to automate its XPS output.
 ## Features
 
 - Uses Microsoft XPS Document Writer as required by the workflow.
-- Reads the real document identifier from Tytan's `Printing` window.
+- Reads the real document identifier from Tytan's `Printing` or `Drukowanie` window.
 - Handles the XPS save dialog invisibly.
 - Supports `.xps` and `.oxps` input.
 - Converts with `gxpswin64.exe` and the `pdfwrite` device.
@@ -46,9 +46,9 @@ scripts required to automate its XPS output.
 - Tytan/Biling SQL configured to print.
 - Administrator permissions for installation.
 
-The package includes GhostXPS and AutoHotkey; they do not need to be installed
-separately. `gswin64c.exe` is not used. The XPS interpreter is
-`gxpswin64.exe`.
+The package includes GhostXPS and both AutoHotkey architectures; they do not
+need to be installed separately. `gswin64c.exe` is not used. The XPS
+interpreter is `gxpswin64.exe`.
 
 ## Installation
 
@@ -146,7 +146,7 @@ duplicate watchers and conversions.
 
 The interceptor uses the following order:
 
-1. Tytan's `Printing` window (`Page 1 of ...`).
+1. Tytan's `Printing` or `Drukowanie` window (`Page 1 of ...`).
 2. `Win32_PrintJob.Document` as a technical fallback.
 3. If neither source is available, the save is cancelled rather than creating
    a misleading filename.
@@ -156,11 +156,17 @@ used as document names.
 
 ### Exact name extraction
 
-Tytan opens a modal window titled `Printing`. Its text contains the real
-document identifier, for example:
+Tytan opens a modal window titled `Printing` or `Drukowanie`. Its text contains
+the real document identifier. English installations show:
 
 ```text
 Page 1 of %_2026_000006_20260923_123547644
+```
+
+Polish installations show the equivalent:
+
+```text
+Strona 1 z %_2025_000002_20260924_143709875
 ```
 
 `SaveAsInterceptor\saveas_xps.ahk` reads that window with AutoHotkey:

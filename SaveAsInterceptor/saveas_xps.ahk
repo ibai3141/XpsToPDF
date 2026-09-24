@@ -133,7 +133,13 @@ WatchSaveDialog()
 
         ; The Windows XPS writer defaults to OpenXPS (*.oxps). Select the
         ; classic XPS type explicitly so the saved file has a .xps extension.
-        for _, typeName in ["XPS Document (*.xps)", "XPS Document", "*.xps"]
+        for _, typeName in [
+            "XPS Document (*.xps)",
+            "XPS Document",
+            "Dokument XPS (*.xps)",
+            "Dokument XPS",
+            "*.xps"
+        ]
         {
             try
             {
@@ -183,7 +189,8 @@ FindSaveDialog()
 {
     titles := [
         "Save Print Output As",
-        "Zapisz wydruk jako"
+        "Zapisz wydruk jako",
+        "Zapisywanie wydruku jako"
     ]
 
     for _, title in titles
@@ -220,6 +227,7 @@ IsGenericPrintJobName(name)
         || normalizedName = "drukowanie"
         || normalizedName = "save print output as"
         || normalizedName = "zapisz wydruk jako"
+        || normalizedName = "zapisywanie wydruku jako"
 }
 
 
@@ -265,23 +273,33 @@ CapturePrintingName()
 
     try
     {
-        windows := WinGetList("Printing")
-        for _, hwnd in windows
+        ; Tytan uses the English title "Printing" or the Polish title
+        ; "Drukowanie", depending on the language of the installation.
+        for _, printTitle in ["Printing", "Drukowanie"]
         {
-            if !WinExist("ahk_id " hwnd)
-                continue
-
-            text := WinGetText("ahk_id " hwnd)
-            if (text = "")
-                continue
-
-            ; Tytan displays the identifier in a line such as:
-            ; "Page 1 of %_2026_000013_20260923_112101037".
-            if RegExMatch(text, "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$", &match)
+            windows := WinGetList(printTitle)
+            for _, hwnd in windows
             {
-                candidate := Trim(match[1])
-                if (candidate != "" && !IsGenericPrintJobName(candidate))
-                    pendingPrintName := candidate
+                if !WinExist("ahk_id " hwnd)
+                    continue
+
+                text := WinGetText("ahk_id " hwnd)
+                if (text = "")
+                    continue
+
+                ; Tytan displays the identifier in English or Polish, for example:
+                ; "Page 1 of %_2026_000013_20260923_112101037"
+                ; "Strona 1 z %_2025_000002_20260924_143709875".
+                if RegExMatch(
+                    text,
+                    "im)^\s*(?:Page\s+\d+\s+of|Strona\s+\d+\s+z)\s+(.+?)\s*$",
+                    &match
+                )
+                {
+                    candidate := Trim(match[1])
+                    if (candidate != "" && !IsGenericPrintJobName(candidate))
+                        pendingPrintName := candidate
+                }
             }
         }
     }

@@ -2,20 +2,27 @@ $ErrorActionPreference = "Stop"
 
 $installRoot = Join-Path ${env:ProgramFiles} "XpsToPdfService"
 $serviceTarget = Join-Path $installRoot "XpsToPdfService.exe"
-$ahkTarget = Join-Path $installRoot "SaveAsInterceptor\AutoHotkey64.exe"
 $scriptTarget = Join-Path $installRoot "SaveAsInterceptor\saveas_xps.ahk"
+$architecture = $env:PROCESSOR_ARCHITEW6432
+if ([string]::IsNullOrWhiteSpace($architecture)) {
+    $architecture = $env:PROCESSOR_ARCHITECTURE
+}
+$ahkExecutable = if ($architecture -eq "AMD64") { "AutoHotkey64.exe" } else { "AutoHotkey32.exe" }
+$ahkTarget = Join-Path $installRoot "SaveAsInterceptor\$ahkExecutable"
 $interactiveAccount = (Get-CimInstance Win32_ComputerSystem).UserName
 if ([string]::IsNullOrWhiteSpace($interactiveAccount)) {
-    throw "No interactive Windows user was detected."
+    $interactiveUser = $env:USERNAME
+    $interactiveProfile = $env:USERPROFILE
 }
-$interactiveUser = $interactiveAccount.Split('\')[-1]
-$interactiveProfile = (Get-CimInstance Win32_UserProfile |
-    Where-Object { $_.LocalPath -and $_.LocalPath -like "C:\Users\$interactiveUser" }).LocalPath
+else {
+    $interactiveUser = $interactiveAccount.Split('\')[-1]
+    $interactiveProfile = (Get-CimInstance Win32_UserProfile |
+        Where-Object { $_.LocalPath -and $_.LocalPath -like "C:\Users\$interactiveUser" }).LocalPath
+}
 if ([string]::IsNullOrWhiteSpace($interactiveProfile)) {
     throw "The profile for interactive user '$interactiveUser' was not found."
 }
 $startupFolder = Join-Path $interactiveProfile "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
-$startupLauncher = Join-Path $startupFolder "XpsToPdfService-AutoHotkey.cmd"
 $startupLauncher = Join-Path $startupFolder "XpsToPdfService-AutoHotkey.cmd"
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -29,6 +36,8 @@ New-Item -ItemType Directory -Force -Path $installRoot, "$installRoot\SaveAsInte
 Get-Process XpsToPdfService -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
 Get-Process AutoHotkey64 -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+Get-Process AutoHotkey32 -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 1
 Copy-Item -Path (Join-Path $PSScriptRoot "service\*") -Destination $installRoot -Recurse -Force

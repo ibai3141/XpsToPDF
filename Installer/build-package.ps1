@@ -1,7 +1,8 @@
 param(
     [string]$Output = (Join-Path $PSScriptRoot "package"),
     [string]$GhostXpsSource = "C:\Users\Ibai\Downloads\ghostxps-10.08.0-win64\ghostxps-10.08.0-win64",
-    [string]$AutoHotkeySource = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
+    [string]$AutoHotkeySource = "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe",
+    [string]$AutoHotkey32Source = "C:\Program Files\AutoHotkey\v2\AutoHotkey32.exe"
 )
 
 $ErrorActionPreference = "Stop"
@@ -24,9 +25,13 @@ if (-not (Test-Path -LiteralPath (Join-Path $GhostXpsSource "gxpswin64.exe"))) {
 if (-not (Test-Path -LiteralPath $AutoHotkeySource)) {
     throw "AutoHotkey was not found at: $AutoHotkeySource"
 }
+if (-not (Test-Path -LiteralPath $AutoHotkey32Source)) {
+    throw "32-bit AutoHotkey was not found at: $AutoHotkey32Source"
+}
 
 Copy-Item -Path (Join-Path $GhostXpsSource "*") -Destination $ghostDestination -Recurse -Force
 Copy-Item -LiteralPath $AutoHotkeySource -Destination (Join-Path $interceptorDestination "AutoHotkey64.exe") -Force
+Copy-Item -LiteralPath $AutoHotkey32Source -Destination (Join-Path $interceptorDestination "AutoHotkey32.exe") -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "SaveAsInterceptor\saveas_xps.ahk") -Destination $interceptorDestination -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\install.ps1") -Destination $Output -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\uninstall.ps1") -Destination $Output -Force
