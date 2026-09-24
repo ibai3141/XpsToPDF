@@ -18,9 +18,6 @@ Worker.cs                         Service and XPS-to-PDF pipeline
 Program.cs                        Generic host and Windows-service integration
 appsettings.json                  Runtime paths
 SaveAsInterceptor/saveas_xps.ahk  Interactive dialog automation
-Installer/build-package.ps1      Self-contained package builder
-Installer/install.ps1             Installation and recovery configuration
-Installer/uninstall.ps1           Removal script
 README.md                         Short technical overview
 INSTALLATION_GUIDE.md             Client installation guide
 ```
@@ -200,18 +197,6 @@ The launcher must use the empty `start` window title before quoted paths:
 ```cmd
 start "" "C:\Program Files\XpsToPdfService\SaveAsInterceptor\AutoHotkey64.exe" "C:\Program Files\XpsToPdfService\SaveAsInterceptor\saveas_xps.ahk"
 ```
-
-## Failure history and fixes
-
-| Symptom | Root cause | Fix |
-|---|---|---|
-| Empty PDF | Incomplete XPS or wrong interpreter | readiness checks and `gxpswin64.exe` |
-| `.oxps` extension | OpenXPS selected | select classic XPS explicitly |
-| Wrong document name | stale title/dialog value | read Tytan `Printing` identifier |
-| GhostXPS exit code 1 | `%` interpreted as pattern | pass `%%` to GhostXPS |
-| Temporary PDF missing | duplicate service processes | global mutex and cleanup |
-| Build file locked | running executable | stop service/process before copy |
-| AutoHotkey missing after reboot | bad Startup quoting/profile | user-specific launcher and correct `start` syntax |
 
 ## Performance and maintenance
 
