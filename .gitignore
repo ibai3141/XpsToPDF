@@ -40,3 +40,5 @@ appsettings.*.Local.json
 *.nupkg
 *.snupkg
 publish/
+Installer/package/
+Installer/*.zip

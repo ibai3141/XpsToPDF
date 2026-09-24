@@ -16,6 +16,8 @@
   <ItemGroup>
     <Compile Remove="Tools\**" />
     <None Remove="Tools\**" />
+    <Content Remove="Tools\**" />
+    <EmbeddedResource Remove="Tools\**" />
   </ItemGroup>
 
 </Project>
