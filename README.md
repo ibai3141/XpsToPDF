@@ -154,6 +154,46 @@ The interceptor uses the following order:
 The application window title and the XPS dialog's proposed filename are not
 used as document names.
 
+### Exact name extraction
+
+Tytan opens a modal window titled `Printing`. Its text contains the real
+document identifier, for example:
+
+```text
+Page 1 of %_2026_000006_20260923_123547644
+```
+
+`SaveAsInterceptor\saveas_xps.ahk` reads that window with AutoHotkey:
+
+```autohotkey
+windows := WinGetList("Printing")
+text := WinGetText("ahk_id " hwnd)
+
+if RegExMatch(
+    text,
+    "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$",
+    &match
+)
+    pendingPrintName := Trim(match[1])
+```
+
+The captured value becomes the base filename:
+
+```text
+%_2026_000006_20260923_123547644
+        |
+        +-- C:\XPS_OUT\%_2026_000006_20260923_123547644.xps
+        +-- C:\PDF\%_2026_000006_20260923_123547644.pdf
+```
+
+The save-dialog path is filled automatically with the captured name:
+
+```autohotkey
+filePath := xpsFolder . "\\" . documentName . ".xps"
+ControlSetText(filePath, "Edit1", "ahk_id " hwnd)
+ControlSend("{Enter}", , "ahk_id " hwnd)
+```
+
 ## Conversion safety
 
 The service waits until the XPS is non-empty, exclusively readable, and stable
