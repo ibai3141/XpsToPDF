@@ -1,6 +1,7 @@
-# XPS to PDF Service — Current Flow
+# XpsToPdfService
 
-## Purpose
+Automated Microsoft XPS Document Writer to PDF conversion for Tytan/Biling SQL
+printing workflows.
 
 ```text
 Tytan / Biling SQL
@@ -9,187 +10,185 @@ Tytan / Biling SQL
 Microsoft XPS Document Writer
         |
         v
-SaveAs Interceptor (AutoHotkey)
+AutoHotkey SaveAs Interceptor
         |
         v
 C:\XPS_OUT\document-name.xps
         |
         v
-XpsToPdfService (Worker.cs)
-        |
-        v
-GhostXPS (gxpswin64.exe)
+XpsToPdfService + GhostXPS
         |
         v
 C:\PDF\document-name.pdf
 ```
 
-Tytan/Biling SQL remains closed-source. This project intercepts the XPS save
-operation and converts the resulting XPS/OpenXPS package to PDF.
+Tytan/Biling SQL remains an external, closed-source application. This
+repository contains the interceptor, conversion service, and deployment
+scripts required to automate its XPS output.
 
-## Configuration
+## Features
 
-The service reads its paths from `appsettings.json`:
+- Uses Microsoft XPS Document Writer as required by the workflow.
+- Reads the real document identifier from Tytan's `Printing` window.
+- Handles the XPS save dialog invisibly.
+- Supports `.xps` and `.oxps` input.
+- Converts with `gxpswin64.exe` and the `pdfwrite` device.
+- Preserves names containing `%`.
+- Publishes PDFs through a temporary file to prevent partial output.
+- Prevents duplicate service instances with a global mutex.
+- Starts automatically after Windows boot and user logon.
+- Includes a self-contained `win-x64` installer package.
+
+## Requirements
+
+- Windows 10 or Windows 11, 64-bit.
+- Microsoft XPS Document Writer.
+- Tytan/Biling SQL configured to print.
+- Administrator permissions for installation.
+
+The package includes GhostXPS and AutoHotkey; they do not need to be installed
+separately. `gswin64c.exe` is not used. The XPS interpreter is
+`gxpswin64.exe`.
+
+## Installation
+
+Build the package from the repository root:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Installer\build-package.ps1
+```
+
+The output is created in `Installer\package`. A ZIP package is also generated
+as `Installer\XpsToPdfService-package.zip`.
+
+On the client computer, extract the ZIP and run PowerShell as Administrator:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\install.ps1
+```
+
+The installer:
+
+1. Stops previous service and AutoHotkey processes.
+2. Installs the application under `C:\Program Files\XpsToPdfService`.
+3. Copies GhostXPS and AutoHotkey.
+4. Creates `C:\XPS_OUT` and `C:\PDF`.
+5. Registers delayed automatic service startup and recovery.
+6. Creates an interactive-user Startup launcher for AutoHotkey.
+
+See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) for the client procedure.
+
+## Runtime configuration
+
+The installed service reads `appsettings.json`:
 
 ```json
-"XpsToPdf": {
-  "XpsFolder": "C:\\XPS_OUT",
-  "PdfFolder": "C:\\PDF",
-  "GhostXpsPath": "C:\\Program Files\\GhostXPS\\gxpswin64.exe"
+{
+  "XpsToPdf": {
+    "XpsFolder": "C:\\XPS_OUT",
+    "PdfFolder": "C:\\PDF",
+    "GhostXpsPath": "C:\\Program Files\\XpsToPdfService\\GhostXPS\\gxpswin64.exe"
+  }
 }
 ```
 
-`gxpswin64.exe` is the only Ghostscript-family executable used by this
-project. `gswin64c.exe` is not used because it is not the XPS interpreter.
-Each installation may change `GhostXpsPath` without recompiling the service.
+Paths can be changed without recompiling. Restart the service after changing
+the file.
 
-## 1. AutoHotkey interceptor
+## Verify a client installation
 
-File: `SaveAsInterceptor\saveas_xps.ahk`
+```powershell
+Get-Service XpsToPdfService
+Get-Process AutoHotkey64
+```
 
-The interceptor runs in the interactive user session because a Windows service
-cannot directly control desktop windows.
-
-### Obtaining the document name
-
-Tytan displays the real print identifier in its modal `Printing` window:
+Print a test document from Tytan and verify:
 
 ```text
-Page 1 of %_2026_000006_20260923_123547644
+C:\XPS_OUT\<document-name>.xps
+C:\PDF\<document-name>.pdf
 ```
 
-The script reads that window and extracts the value after `Page 1 of`:
+The normal user workflow requires no PowerShell commands.
 
-```autohotkey
-windows := WinGetList("Printing")
-text := WinGetText("ahk_id " hwnd)
+## Development
 
-if RegExMatch(
-    text,
-    "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$",
-    &match
-)
-    pendingPrintName := Trim(match[1])
+Build the service:
+
+```powershell
+dotnet build
 ```
 
-The name is then used when the XPS save dialog appears. Tytan's `Printing`
-window is the authoritative source. The Windows print queue is retained only
-as a technical fallback if the modal window is missed. The XPS-proposed name
-and the source application window title are not used as document names.
+Run it interactively during development:
 
-The save dialog is made transparent, filled automatically, and confirmed:
-
-```autohotkey
-WinSetTransparent(0, "ahk_id " hwnd)
-ControlSetText(filePath, "Edit1", "ahk_id " hwnd)
-ControlSend("{Enter}", , "ahk_id " hwnd)
+```powershell
+dotnet run
 ```
 
-The script selects classic XPS when available, preventing the driver from
-defaulting to `.oxps`.
+Stop an interactive instance with `Ctrl+C`. If a background process is holding
+the executable, stop only this service:
 
-## 2. XPS service
-
-File: `Worker.cs`
-
-The service watches `C:\XPS_OUT` and accepts both `.xps` and `.oxps` files:
-
-```csharp
-if (!e.FullPath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &&
-    !e.FullPath.EndsWith(".oxps", StringComparison.OrdinalIgnoreCase))
-    return;
+```powershell
+Get-Process XpsToPdfService | Stop-Process -Force
 ```
 
-Before conversion, it verifies that the file exists, is non-empty, can be
-opened exclusively, and remains stable across two quick checks. This prevents
-GhostXPS from reading an incomplete package.
+Restart the AutoHotkey script after changing it:
 
-GhostXPS is started with the `pdfwrite` device:
-
-```csharp
-psi.ArgumentList.Add("-dSAFER");
-psi.ArgumentList.Add("-dBATCH");
-psi.ArgumentList.Add("-dNOPAUSE");
-psi.ArgumentList.Add("-sDEVICE=pdfwrite");
-psi.ArgumentList.Add($"-sOutputFile={ghostOutputFile}");
-psi.ArgumentList.Add(xpsFile);
+```text
+SaveAsInterceptor\saveas_xps.ahk
 ```
 
-### Percent signs in names
+Do not run multiple service instances; the global mutex deliberately prevents
+duplicate watchers and conversions.
 
-Tytan identifiers can begin with `%`. GhostXPS treats `%` in an output path as
-a pattern marker, so it is escaped only for the process argument:
+## Name resolution
+
+The interceptor uses the following order:
+
+1. Tytan's `Printing` window (`Page 1 of ...`).
+2. `Win32_PrintJob.Document` as a technical fallback.
+3. If neither source is available, the save is cancelled rather than creating
+   a misleading filename.
+
+The application window title and the XPS dialog's proposed filename are not
+used as document names.
+
+## Conversion safety
+
+The service waits until the XPS is non-empty, exclusively readable, and stable
+before conversion. GhostXPS writes `<name>.tmp.pdf`; only a successful exit
+code and an existing temporary file allow publication as `<name>.pdf`.
+
+Names beginning with `%` are escaped only in the GhostXPS argument:
 
 ```csharp
 string ghostOutputFile = temporaryPdfFile.Replace("%", "%%");
 ```
 
-The actual filename on disk remains unchanged.
+The filename on disk remains unchanged.
 
-### Temporary PDF
+## Documentation
 
-GhostXPS first writes `document.tmp.pdf`. Only after exit code `0` and a file
-existence check does the service publish the final PDF:
+- [Client installation guide](INSTALLATION_GUIDE.md)
+- [Technical documentation](TECHNICAL_DOCUMENTATION.md)
+- [Technical documentation (Word)](XPS_TO_PDF_SERVICE_DOCUMENTATION.docx)
+- [Client installation guide (Word)](XpsToPdfService_Installation_Guide.docx)
 
-```csharp
-File.Move(temporaryPdfFile, pdfFile, true);
+## Uninstallation
+
+From an elevated PowerShell window in the extracted package directory:
+
+```powershell
+Set-ExecutionPolicy Bypass -Scope Process -Force
+.\uninstall.ps1
 ```
 
-This prevents incomplete PDFs from appearing in `C:\PDF`.
+The uninstaller removes installed program files, the Windows service, and the
+AutoHotkey Startup launcher. It preserves `C:\XPS_OUT` and `C:\PDF`.
 
-## 3. Reliability protections
+## Licensing and redistribution
 
-Two service processes could race over the same temporary PDF. `Worker.cs` uses
-a named mutex so only one instance watches the folder:
-
-```csharp
-using Mutex instanceMutex =
-    new(false, "Global\\XpsToPdfService");
-```
-
-Each job reports service-side timing:
-
-```text
-XPS job time: 2.44 s | C:\XPS_OUT\document.xps
-```
-
-This measures XPS readiness plus GhostXPS conversion; it does not include all
-time spent by Tytan before the XPS is created.
-
-## 4. Problems corrected
-
-- Replaced the incorrect `gswin64c.exe` XPS invocation with `gxpswin64.exe`.
-- Added readiness checks for XPS files still being written.
-- Added support for both `.xps` and `.oxps`.
-- Prevented stale dialog values and repeated `.xps` extensions.
-- Selected the classic XPS format explicitly.
-- Escaped `%` names for GhostXPS.
-- Added a single-instance mutex to prevent duplicate conversion.
-- Added timing diagnostics.
-
-## 5. Performance limits
-
-The service no longer has an explicit conversion thread pool. New watcher
-events are handled without blocking detection, but Tytan normally creates XPS
-jobs sequentially. More threads therefore cannot accelerate the upstream step:
-
-```text
-Tytan creates XPS 1 -> XPS 2 -> XPS 3
-```
-
-The main remaining cost is Microsoft XPS Document Writer creating each XPS,
-followed by GhostXPS rendering. BullZip is faster because it generates PDF
-directly and avoids the intermediate XPS stage.
-
-## 6. Source integration
-
-The ideal source-side code would be:
-
-```csharp
-printDocument.DocumentName = filename;
-printDocument.Print();
-```
-
-That code is not available in this repository because Tytan/Biling SQL is
-closed-source. The interceptor therefore reads the identifier exposed by the
-`Printing` window and uses the print queue only as a technical fallback.
+Tytan/Biling SQL is not part of this repository. When redistributing the
+package, preserve the license files included with GhostXPS and AutoHotkey and
+review their respective redistribution terms.
