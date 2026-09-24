@@ -1,7 +1,6 @@
 $ErrorActionPreference = "Stop"
 
 $installRoot = Join-Path ${env:ProgramFiles} "XpsToPdfService"
-$serviceSource = Join-Path $PSScriptRoot "service\XpsToPdfService.exe"
 $serviceTarget = Join-Path $installRoot "XpsToPdfService.exe"
 $ahkTarget = Join-Path $installRoot "SaveAsInterceptor\AutoHotkey64.exe"
 $scriptTarget = Join-Path $installRoot "SaveAsInterceptor\saveas_xps.ahk"
