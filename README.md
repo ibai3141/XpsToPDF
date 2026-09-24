@@ -27,6 +27,22 @@ C:\PDF\document-name.pdf
 Tytan/Biling SQL remains closed-source. This project intercepts the XPS save
 operation and converts the resulting XPS/OpenXPS package to PDF.
 
+## Configuration
+
+The service reads its paths from `appsettings.json`:
+
+```json
+"XpsToPdf": {
+  "XpsFolder": "C:\\XPS_OUT",
+  "PdfFolder": "C:\\PDF",
+  "GhostXpsPath": "C:\\Program Files\\GhostXPS\\gxpswin64.exe"
+}
+```
+
+`gxpswin64.exe` is the only Ghostscript-family executable used by this
+project. `gswin64c.exe` is not used because it is not the XPS interpreter.
+Each installation may change `GhostXpsPath` without recompiling the service.
+
 ## 1. AutoHotkey interceptor
 
 File: `SaveAsInterceptor\saveas_xps.ahk`

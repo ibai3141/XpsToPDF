@@ -5,15 +5,19 @@ namespace XpsToPdfService;
 
 public class Worker : BackgroundService
 {
-    private const string XpsFolder = @"C:\XPS_OUT";
-    private const string PdfFolder = @"C:\PDF";
-
-    // GhostXPS is the XPS interpreter. Ghostscript (gswin64c.exe) alone is
-    // not the executable that should receive an .xps file.
-    private const string GhostXps =
-        @"C:\Users\Ibai\Downloads\ghostxps-10.08.0-win64\ghostxps-10.08.0-win64\gxpswin64.exe";
+    private readonly string xpsFolder;
+    private readonly string pdfFolder;
+    private readonly string ghostXps;
 
     private readonly ConcurrentDictionary<string, bool> processing = new();
+
+    public Worker(IConfiguration configuration)
+    {
+        xpsFolder = configuration["XpsToPdf:XpsFolder"] ?? @"C:\XPS_OUT";
+        pdfFolder = configuration["XpsToPdf:PdfFolder"] ?? @"C:\PDF";
+        ghostXps = configuration["XpsToPdf:GhostXpsPath"]
+            ?? @"C:\Program Files\GhostXPS\gxpswin64.exe";
+    }
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
@@ -34,9 +38,12 @@ public class Worker : BackgroundService
             // The previous process ended unexpectedly; this instance owns the mutex.
         }
 
+        Directory.CreateDirectory(xpsFolder);
+        Directory.CreateDirectory(pdfFolder);
+
         using FileSystemWatcher watcher = new FileSystemWatcher();
 
-        watcher.Path = XpsFolder;
+        watcher.Path = xpsFolder;
         // The Microsoft writer can produce either classic XPS or OpenXPS.
         // Filter is broad because FileSystemWatcher accepts only one pattern;
         // the handler below performs the actual extension check.
@@ -78,9 +85,9 @@ public class Worker : BackgroundService
         {
             Console.WriteLine($"XPS detected: {xpsFile}");
 
-            if (!File.Exists(GhostXps))
+            if (!File.Exists(ghostXps))
             {
-                Console.Error.WriteLine($"GhostXPS was not found: {GhostXps}");
+                Console.Error.WriteLine($"GhostXPS was not found: {ghostXps}");
                 return;
             }
 
@@ -90,14 +97,14 @@ public class Worker : BackgroundService
                 return;
             }
 
-            Directory.CreateDirectory(PdfFolder);
+            Directory.CreateDirectory(pdfFolder);
 
             string pdfFile = Path.Combine(
-                PdfFolder,
+                pdfFolder,
                 Path.GetFileNameWithoutExtension(xpsFile) + ".pdf"
             );
             string temporaryPdfFile = Path.Combine(
-                PdfFolder,
+                pdfFolder,
                 Path.GetFileNameWithoutExtension(xpsFile) + ".tmp.pdf"
             );
 
@@ -106,7 +113,7 @@ public class Worker : BackgroundService
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
-                FileName = GhostXps,
+                FileName = ghostXps,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
