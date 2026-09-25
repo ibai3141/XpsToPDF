@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Collections.Concurrent;
+using System.Text;
 
 namespace XpsToPdfService;
 
@@ -10,6 +11,9 @@ public class Worker : BackgroundService
     private readonly string ghostXps;
 
     private readonly ConcurrentDictionary<string, bool> processing = new();
+    private readonly object logLock = new();
+
+    private string ServiceLogPath => Path.Combine(xpsFolder, "xpstoservice.log");
 
     public Worker(IConfiguration configuration)
     {
@@ -29,7 +33,7 @@ public class Worker : BackgroundService
         {
             if (!instanceMutex.WaitOne(0))
             {
-                Console.Error.WriteLine("Another instance of XpsToPdfService is already running.");
+                LogError("Another instance of XpsToPdfService is already running.");
                 return;
             }
         }
@@ -40,6 +44,10 @@ public class Worker : BackgroundService
 
         Directory.CreateDirectory(xpsFolder);
         Directory.CreateDirectory(pdfFolder);
+
+        LogInfo($"Service started. XPS input folder: {xpsFolder}");
+        LogInfo($"PDF output folder: {pdfFolder}");
+        LogInfo($"GhostXPS executable: {ghostXps}");
 
         using FileSystemWatcher watcher = new FileSystemWatcher();
 
@@ -57,6 +65,13 @@ public class Worker : BackgroundService
 
         watcher.EnableRaisingEvents = true;
 
+        // Recover files that were created before the service started or while
+        // the FileSystemWatcher was unavailable.
+        foreach (string existingFile in Directory.EnumerateFiles(xpsFolder, "*.*"))
+        {
+            QueueXps(existingFile);
+        }
+
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -68,14 +83,19 @@ public class Worker : BackgroundService
         object sender,
         FileSystemEventArgs e)
     {
-        if (!e.FullPath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &&
-            !e.FullPath.EndsWith(".oxps", StringComparison.OrdinalIgnoreCase))
+        QueueXps(e.FullPath);
+    }
+
+    private void QueueXps(string filePath)
+    {
+        if (!filePath.EndsWith(".xps", StringComparison.OrdinalIgnoreCase) &&
+            !filePath.EndsWith(".oxps", StringComparison.OrdinalIgnoreCase))
             return;
 
-        if (!processing.TryAdd(e.FullPath, true))
+        if (!processing.TryAdd(filePath, true))
             return;
 
-        _ = ConvertXpsToPdf(e.FullPath);
+        _ = ConvertXpsToPdf(filePath);
     }
 
     private async Task ConvertXpsToPdf(string xpsFile)
@@ -83,17 +103,17 @@ public class Worker : BackgroundService
         Stopwatch totalTimer = Stopwatch.StartNew();
         try
         {
-            Console.WriteLine($"XPS detected: {xpsFile}");
+            LogInfo($"XPS detected: {xpsFile}");
 
             if (!File.Exists(ghostXps))
             {
-                Console.Error.WriteLine($"GhostXPS was not found: {ghostXps}");
+                LogError($"PDF not created. GhostXPS was not found: {ghostXps}");
                 return;
             }
 
             if (!await WaitForFileReadyAsync(xpsFile))
             {
-                Console.Error.WriteLine($"The XPS file was not completely written: {xpsFile}");
+                LogError($"PDF not created. The XPS file was not completely written: {xpsFile}");
                 return;
             }
 
@@ -108,8 +128,8 @@ public class Worker : BackgroundService
                 Path.GetFileNameWithoutExtension(xpsFile) + ".tmp.pdf"
             );
 
-            Console.WriteLine($"Converting: {xpsFile}");
-            Console.WriteLine($"PDF destination: {pdfFile}");
+            LogInfo($"Converting: {xpsFile}");
+            LogInfo($"PDF destination: {pdfFile}");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
@@ -145,45 +165,68 @@ public class Worker : BackgroundService
 
             await process.WaitForExitAsync();
 
-            Console.WriteLine($"GhostXPS exited with code: {process.ExitCode}");
+            LogInfo($"GhostXPS exited with code: {process.ExitCode}");
             if (!string.IsNullOrWhiteSpace(output))
-                Console.WriteLine(output);
+                LogInfo($"GhostXPS output: {output.Trim()}");
             if (!string.IsNullOrWhiteSpace(error))
-                Console.Error.WriteLine(error);
+                LogError($"GhostXPS error: {error.Trim()}");
 
             if (process.ExitCode != 0)
             {
-                Console.Error.WriteLine(
-                    $"PDF was not published because GhostXPS exited with code {process.ExitCode}."
-                );
+                LogError($"PDF not created. GhostXPS exited with code {process.ExitCode}. Expected output: {pdfFile}");
                 return;
             }
 
             if (!File.Exists(temporaryPdfFile))
             {
-                Console.Error.WriteLine(
-                    $"GhostXPS exited with code 0 but did not create the temporary file: {temporaryPdfFile}"
-                );
+                LogError($"PDF not created. GhostXPS exited with code 0 but did not create the temporary file: {temporaryPdfFile}. Expected output: {pdfFile}");
                 return;
             }
 
             File.Move(temporaryPdfFile, pdfFile, true);
-            Console.WriteLine($"PDF created: {pdfFile}");
+            LogInfo($"PDF created: {pdfFile}");
 
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            LogError($"PDF not created for XPS '{xpsFile}': {ex.Message}");
         }
         finally
         {
             if (totalTimer.IsRunning)
                 totalTimer.Stop();
 
-            Console.WriteLine(
-                $"XPS job time: {totalTimer.Elapsed.TotalSeconds:F2} s | {xpsFile}"
-            );
+            LogInfo($"XPS job time: {totalTimer.Elapsed.TotalSeconds:F2} s | {xpsFile}");
             processing.TryRemove(xpsFile, out _);
+        }
+    }
+
+    private void LogInfo(string message) => WriteLog(message, isError: false);
+
+    private void LogError(string message) => WriteLog(message, isError: true);
+
+    private void WriteLog(string message, bool isError)
+    {
+        string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} {message}";
+
+        if (isError)
+            Console.Error.WriteLine(line);
+        else
+            Console.WriteLine(line);
+
+        // The Windows service normally has no visible console. Keep a plain
+        // UTF-8 log beside the XPS files so support can verify every output.
+        try
+        {
+            Directory.CreateDirectory(xpsFolder);
+            lock (logLock)
+            {
+                File.AppendAllText(ServiceLogPath, line + Environment.NewLine, Encoding.UTF8);
+            }
+        }
+        catch
+        {
+            // Logging must never stop XPS conversion if the log file is locked.
         }
     }
 
