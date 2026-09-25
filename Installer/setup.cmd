@@ -19,4 +19,5 @@ if errorlevel 1 (
 
 echo.
 echo Installation completed successfully.
+echo Press any key to close this window.
 pause

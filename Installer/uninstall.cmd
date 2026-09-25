@@ -20,4 +20,5 @@ if errorlevel 1 (
 
 echo.
 echo Uninstallation completed successfully.
+echo Press any key to close this window.
 pause
