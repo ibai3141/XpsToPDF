@@ -1,23 +1,31 @@
 @echo off
 setlocal
 
+rem Relaunch this same script in an elevated CMD window when necessary.
+fltmc >nul 2>&1
+if errorlevel 1 (
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%ComSpec%' -Verb RunAs -ArgumentList '/c ""%~f0"" --elevated'"
+    exit /b 0
+)
+
 set "INSTALLER=%~dp0install.ps1"
 
 echo XpsToPdfService setup
 echo.
-echo Windows will ask for administrator permission.
+echo Administrator permissions confirmed.
+echo Starting the installer. Please wait...
 echo.
-echo Starting the elevated installer. Please wait...
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$p = Start-Process -FilePath powershell.exe -Verb RunAs -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','%INSTALLER%') -Wait -PassThru; exit $p.ExitCode"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%INSTALLER%"
 set "INSTALL_EXIT=%ERRORLEVEL%"
 
 echo.
-echo Elevated installer finished with exit code %INSTALL_EXIT%.
+echo Installer finished with exit code %INSTALL_EXIT%.
 
 if not "%INSTALL_EXIT%"=="0" (
     echo.
-    echo Installation failed. Press any key to close.
+    echo Installation failed.
+    echo Press any key to close this window.
     pause >nul
     exit /b 1
 )
