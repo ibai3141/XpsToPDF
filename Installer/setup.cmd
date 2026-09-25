@@ -1,26 +1,19 @@
 @echo off
 setlocal
 
-rem Relaunch this same script in an elevated CMD window when necessary.
-fltmc >nul 2>&1
-if errorlevel 1 (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%ComSpec%' -Verb RunAs -ArgumentList '/c ""%~f0"" --elevated'"
-    exit /b 0
-)
-
 set "INSTALLER=%~dp0install.ps1"
 
 echo TytanXpsToPdf setup
 echo.
-echo Administrator permissions confirmed.
-echo Starting the installer. Please wait...
+echo Windows will ask for administrator permission.
+echo Starting the elevated installer. Please wait...
 echo.
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%INSTALLER%"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$p = Start-Process -FilePath 'powershell.exe' -Verb RunAs -WindowStyle Normal -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','%INSTALLER%') -Wait -PassThru; exit $p.ExitCode"
 set "INSTALL_EXIT=%ERRORLEVEL%"
 
 echo.
-echo Installer finished with exit code %INSTALL_EXIT%.
+echo Elevated installer finished with exit code %INSTALL_EXIT%.
 
 if not "%INSTALL_EXIT%"=="0" (
     echo.
