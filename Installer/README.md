@@ -21,6 +21,11 @@ powershell -ExecutionPolicy Bypass -File .\Installer\build-package.ps1 `
 
 ## Install on a client machine
 
+For a simple click-based installation, double-click `setup.cmd`. It requests
+administrator permission and runs the installer automatically.
+
+The PowerShell method remains available for technical administrators:
+
 Extract the package and run PowerShell as Administrator:
 
 ```powershell

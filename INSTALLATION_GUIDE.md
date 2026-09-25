@@ -31,7 +31,10 @@ Windows.
 cd "C:\Users\<user>\Downloads\XpsToPdfService-package"
 ```
 
-4. Allow scripts for the current PowerShell session:
+Alternatively, double-click `setup.cmd` and accept the administrator prompt.
+No PowerShell knowledge is required for this method.
+
+For a manual administrator installation, allow scripts for the current PowerShell session:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
