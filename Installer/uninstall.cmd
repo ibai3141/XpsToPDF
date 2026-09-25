@@ -3,7 +3,7 @@ setlocal
 
 set "UNINSTALLER=%~dp0uninstall.ps1"
 
-echo XpsToPdfService uninstall
+echo TytanXpsToPdf uninstall
 echo.
 echo Windows will ask for administrator permission.
 echo C:XPS_OUT and C:PDF will be preserved.

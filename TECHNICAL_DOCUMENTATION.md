@@ -100,7 +100,7 @@ The installer writes the final path:
   "XpsToPdf": {
     "XpsFolder": "C:\\XPS_OUT",
     "PdfFolder": "C:\\PDF",
-    "GhostXpsPath": "C:\\Program Files\\XpsToPdfService\\GhostXPS\\gxpswin64.exe"
+    "GhostXpsPath": "C:\\Program Files\\TytanXpsToPdf\\GhostXPS\\gxpswin64.exe"
   }
 }
 ```
@@ -124,7 +124,7 @@ processing the same path twice. A named global mutex prevents two service
 processes from watching the folder at the same time:
 
 ```csharp
-using Mutex instanceMutex = new(false, "Global\\XpsToPdfService");
+using Mutex instanceMutex = new(false, "Global\\TytanXpsToPdf");
 if (!instanceMutex.WaitOne(0))
     return;
 ```
@@ -195,7 +195,7 @@ This prevents incomplete PDFs from appearing as final output.
 ```csharp
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "XpsToPdfService";
+    options.ServiceName = "TytanXpsToPdf";
 });
 builder.Services.AddHostedService<Worker>();
 ```
@@ -212,7 +212,7 @@ user. `uninstall.ps1` removes installed components but preserves output files.
 The launcher must use the empty `start` window title before quoted paths:
 
 ```cmd
-start "" "C:\Program Files\XpsToPdfService\SaveAsInterceptor\AutoHotkey64.exe" "C:\Program Files\XpsToPdfService\SaveAsInterceptor\saveas_xps.ahk"
+start "" "C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\AutoHotkey64.exe" "C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\saveas_xps.ahk"
 ```
 
 ## Performance and maintenance

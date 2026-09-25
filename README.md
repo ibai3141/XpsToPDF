@@ -62,10 +62,11 @@ powershell -ExecutionPolicy Bypass -File .\Installer\build-package.ps1
 ```
 
 The output is created in `Installer\package`. A ZIP package is also generated
-as `Installer\XpsToPdfService-package.zip`.
+as `Installer\TytanXpsToPdf-package.zip`.
 
-On the client computer, extract the ZIP and double-click `setup.cmd`. It opens
-the administrator consent prompt and runs the installation automatically.
+On the client computer, extract the ZIP, open the inner `TytanXpsToPdf` folder,
+and double-click `setup.cmd`. It opens the administrator consent prompt and
+runs the installation automatically.
 
 For technical administrators, the equivalent PowerShell commands are:
 
@@ -77,7 +78,7 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 The installer:
 
 1. Stops previous service and AutoHotkey processes.
-2. Installs the application under `C:\Program Files\XpsToPdfService`.
+2. Installs the application under `C:\Program Files\TytanXpsToPdf`.
 3. Selects the matching x86/x64 service and GhostXPS binaries, then copies
    GhostXPS and AutoHotkey.
 4. Creates `C:\XPS_OUT` and `C:\PDF`.
@@ -95,7 +96,7 @@ The installed service reads `appsettings.json`:
   "XpsToPdf": {
     "XpsFolder": "C:\\XPS_OUT",
     "PdfFolder": "C:\\PDF",
-    "GhostXpsPath": "C:\\Program Files\\XpsToPdfService\\GhostXPS\\gxpswin64.exe"
+    "GhostXpsPath": "C:\\Program Files\\TytanXpsToPdf\\GhostXPS\\gxpswin64.exe"
   }
 }
 ```
@@ -106,7 +107,7 @@ the file.
 ## Verify a client installation
 
 ```powershell
-Get-Service XpsToPdfService
+Get-Service TytanXpsToPdf
 Get-Process AutoHotkey64
 ```
 

@@ -5,7 +5,7 @@ if ([version]$operatingSystem.Version -lt [version]"10.0") {
     throw "This installer requires Windows 10 or later. Windows 7 and Windows 8.1 are not supported by the .NET 9 service."
 }
 
-$installRoot = Join-Path ${env:ProgramFiles} "XpsToPdfService"
+$installRoot = Join-Path ${env:ProgramFiles} "TytanXpsToPdf"
 $is64Bit = [Environment]::Is64BitOperatingSystem
 $packageArchitecture = if ($is64Bit) { "x64" } else { "x86" }
 $serviceSource = Join-Path $PSScriptRoot "service-$packageArchitecture"
@@ -32,7 +32,7 @@ if ([string]::IsNullOrWhiteSpace($interactiveProfile)) {
     throw "The profile for interactive user '$interactiveUser' was not found."
 }
 $startupFolder = Join-Path $interactiveProfile "AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup"
-$startupLauncher = Join-Path $startupFolder "XpsToPdfService-AutoHotkey.cmd"
+$startupLauncher = Join-Path $startupFolder "TytanXpsToPdf-AutoHotkey.cmd"
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
@@ -48,7 +48,15 @@ if (-not (Test-Path -LiteralPath $ghostSource)) {
 }
 
 New-Item -ItemType Directory -Force -Path $installRoot, "$installRoot\SaveAsInterceptor", "$installRoot\GhostXPS", "C:\XPS_OUT", "C:\PDF" | Out-Null
+
+# Remove the previous service/folder name during upgrades.
 & sc.exe stop XpsToPdfService 2>$null | Out-Null
+Get-Process XpsToPdfService -ErrorAction SilentlyContinue |
+    Stop-Process -Force -ErrorAction SilentlyContinue
+& sc.exe delete XpsToPdfService 2>$null | Out-Null
+Remove-Item -LiteralPath (Join-Path ${env:ProgramFiles} "XpsToPdfService") -Recurse -Force -ErrorAction SilentlyContinue
+
+& sc.exe stop TytanXpsToPdf 2>$null | Out-Null
 Get-Process XpsToPdfService -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
 Get-Process AutoHotkey64 -ErrorAction SilentlyContinue |
@@ -60,31 +68,31 @@ Copy-Item -Path (Join-Path $serviceSource "*") -Destination $installRoot -Recurs
 Copy-Item -Path (Join-Path $ghostSource "*") -Destination "$installRoot\GhostXPS" -Recurse -Force
 Copy-Item -Path (Join-Path $PSScriptRoot "SaveAsInterceptor\*") -Destination "$installRoot\SaveAsInterceptor" -Recurse -Force
 
-& sc.exe delete XpsToPdfService 2>$null | Out-Null
-& sc.exe create XpsToPdfService binPath= "`"$serviceTarget`"" start= delayed-auto DisplayName= "XPS to PDF Service" | Out-Null
-& sc.exe description XpsToPdfService "Converts Microsoft XPS Document Writer output to PDF." | Out-Null
-& sc.exe failure XpsToPdfService reset= 86400 actions= restart/60000/restart/60000/restart/60000 | Out-Null
-& sc.exe failureflag XpsToPdfService 1 | Out-Null
+& sc.exe delete TytanXpsToPdf 2>$null | Out-Null
+& sc.exe create TytanXpsToPdf binPath= "`"$serviceTarget`"" start= delayed-auto DisplayName= "Tytan XPS to PDF Service" | Out-Null
+& sc.exe description TytanXpsToPdf "Converts Microsoft XPS Document Writer output to PDF for Tytan SQL." | Out-Null
+& sc.exe failure TytanXpsToPdf reset= 86400 actions= restart/60000/restart/60000/restart/60000 | Out-Null
+& sc.exe failureflag TytanXpsToPdf 1 | Out-Null
 
 $launcherContent = "@echo off`r`nstart `"`" `"$ahkTarget`" `"$scriptTarget`"`r`n"
 [IO.File]::WriteAllText($startupLauncher, $launcherContent, [Text.Encoding]::ASCII)
 
-& sc.exe start XpsToPdfService | Out-Null
+& sc.exe start TytanXpsToPdf | Out-Null
 $serviceRunning = $false
 for ($attempt = 1; $attempt -le 15; $attempt++) {
     Start-Sleep -Seconds 1
-    $service = Get-Service -Name XpsToPdfService -ErrorAction Stop
+    $service = Get-Service -Name TytanXpsToPdf -ErrorAction Stop
     if ($service.Status -eq "Running") {
         $serviceRunning = $true
         break
     }
 }
 if (-not $serviceRunning) {
-    throw "The XpsToPdfService service was installed but did not start. Open Services and check XpsToPdfService."
+    throw "The TytanXpsToPdf service was installed but did not start. Open Services and check TytanXpsToPdf."
 }
 
 Start-Process -FilePath $ahkTarget -ArgumentList "`"$scriptTarget`""
 if (-not (Test-Path -LiteralPath $startupLauncher)) {
     throw "The AutoHotkey startup launcher could not be created: $startupLauncher"
 }
-Write-Host "XpsToPdfService installed successfully."
+Write-Host "TytanXpsToPdf installed successfully."

@@ -28,12 +28,12 @@ public class Worker : BackgroundService
     {
         // Only one service instance may watch and convert the XPS folder.
         // Without this guard, two processes can race over the same temporary PDF.
-        using Mutex instanceMutex = new(false, "Global\\XpsToPdfService");
+        using Mutex instanceMutex = new(false, "Global\\TytanXpsToPdf");
         try
         {
             if (!instanceMutex.WaitOne(0))
             {
-                LogError("Another instance of XpsToPdfService is already running.");
+                LogError("Another instance of TytanXpsToPdf is already running.");
                 return;
             }
         }

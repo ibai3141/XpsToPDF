@@ -24,13 +24,14 @@ The installer detects the operating-system architecture automatically.
 
 ## 3. Installation
 
-1. Extract `XpsToPdfService-package.zip`.
-2. Double-click `setup.cmd` and accept the administrator prompt.
+1. Extract `TytanXpsToPdf-package.zip`.
+2. Open the extracted `TytanXpsToPdf` folder.
+3. Double-click `setup.cmd` and accept the administrator prompt.
 For a manual administrator installation, open PowerShell as administrator and
 change to the extracted directory:
 
 ```powershell
-cd "C:\Users\<user>\Downloads\XpsToPdfService-package"
+cd "C:\Users\<user>\Downloads\TytanXpsToPdf-package"
 ```
 
 No PowerShell knowledge is required for the click-based method. The CMD window
@@ -51,7 +52,7 @@ Run the installer:
 Expected result:
 
 ```text
-XpsToPdfService installed successfully.
+TytanXpsToPdf installed successfully.
 ```
 
 The installer stops old service and AutoHotkey processes before copying files,
@@ -62,7 +63,7 @@ so reinstallations do not require manual process cleanup.
 The program is installed in:
 
 ```text
-C:\Program Files\XpsToPdfService
+C:\Program Files\TytanXpsToPdf
 ```
 
 The installer creates:
@@ -72,14 +73,14 @@ C:\XPS_OUT
 C:\PDF
 ```
 
-The Windows service is registered as `XpsToPdfService`, starts automatically
+The Windows service is registered as `TytanXpsToPdf`, starts automatically
 with delayed start, and has automatic recovery enabled.
 
 AutoHotkey is started immediately and a launcher is placed in the interactive
 user's Startup folder:
 
 ```text
-%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\XpsToPdfService-AutoHotkey.cmd
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\TytanXpsToPdf-AutoHotkey.cmd
 ```
 
 ## 5. Configuration
@@ -87,7 +88,7 @@ user's Startup folder:
 Configuration is stored in:
 
 ```text
-C:\Program Files\XpsToPdfService\appsettings.json
+C:\Program Files\TytanXpsToPdf\appsettings.json
 ```
 
 Default values:
@@ -97,7 +98,7 @@ Default values:
   "XpsToPdf": {
     "XpsFolder": "C:\\XPS_OUT",
     "PdfFolder": "C:\\PDF",
-    "GhostXpsPath": "C:\\Program Files\\XpsToPdfService\\GhostXPS\\gxpswin64.exe"
+    "GhostXpsPath": "C:\\Program Files\\TytanXpsToPdf\\GhostXPS\\gxpswin64.exe"
   }
 }
 ```
@@ -111,7 +112,7 @@ nor `gswin32c.exe` is required.
 Run:
 
 ```powershell
-Get-Service XpsToPdfService
+Get-Service TytanXpsToPdf
 Get-Process AutoHotkey64
 ```
 
@@ -144,14 +145,14 @@ C:\XPS_OUT\saveas-interceptor.log
 If the service is stopped, run PowerShell as administrator:
 
 ```powershell
-Start-Service XpsToPdfService
+Start-Service TytanXpsToPdf
 ```
 
 If AutoHotkey is not running, verify that these files exist:
 
 ```text
-C:\Program Files\XpsToPdfService\SaveAsInterceptor\AutoHotkey64.exe
-C:\Program Files\XpsToPdfService\SaveAsInterceptor\saveas_xps.ahk
+C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\AutoHotkey64.exe
+C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\saveas_xps.ahk
 ```
 
 If the Startup launcher is missing, run `install.ps1` again as administrator.
@@ -163,7 +164,7 @@ that timeout.
 If GhostXPS is not found, verify:
 
 ```text
-C:\Program Files\XpsToPdfService\GhostXPS\gxpswin64.exe
+C:\Program Files\TytanXpsToPdf\GhostXPS\gxpswin64.exe
 ```
 
 and check `GhostXpsPath` in `appsettings.json`.

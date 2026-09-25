@@ -5,7 +5,7 @@ HostApplicationBuilder builder =
 
 builder.Services.AddWindowsService(options =>
 {
-    options.ServiceName = "XpsToPdfService";
+    options.ServiceName = "TytanXpsToPdf";
 });
 
 builder.Services.AddHostedService<Worker>();

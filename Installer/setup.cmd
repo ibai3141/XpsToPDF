@@ -10,7 +10,7 @@ if errorlevel 1 (
 
 set "INSTALLER=%~dp0install.ps1"
 
-echo XpsToPdfService setup
+echo TytanXpsToPdf setup
 echo.
 echo Administrator permissions confirmed.
 echo Starting the installer. Please wait...

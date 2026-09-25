@@ -32,7 +32,7 @@ Extract the package and run PowerShell as Administrator:
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The script installs the service under `C:\Program Files\XpsToPdfService`,
+The script installs the service under `C:\Program Files\TytanXpsToPdf`,
 creates `C:\XPS_OUT` and `C:\PDF`, registers the Windows service, and starts
 the AutoHotkey interceptor at interactive logon.
 
