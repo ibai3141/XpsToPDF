@@ -146,9 +146,10 @@ WatchSaveDialog()
                 if ControlChooseString(typeName, "ComboBox2", "ahk_id " hwnd)
                     break
             }
-            catch TargetError
+            catch
             {
-                ; The control name differs between Windows versions.
+                ; The control or localized item may differ between Windows versions.
+                ; Continue with the direct filename assignment below.
             }
         }
 
