@@ -1,5 +1,10 @@
 $ErrorActionPreference = "Stop"
 
+$operatingSystem = Get-CimInstance Win32_OperatingSystem
+if ([version]$operatingSystem.Version -lt [version]"10.0") {
+    throw "This installer requires Windows 10 or later. Windows 7 and Windows 8.1 are not supported by the .NET 9 service."
+}
+
 $installRoot = Join-Path ${env:ProgramFiles} "XpsToPdfService"
 $is64Bit = [Environment]::Is64BitOperatingSystem
 $packageArchitecture = if ($is64Bit) { "x64" } else { "x86" }

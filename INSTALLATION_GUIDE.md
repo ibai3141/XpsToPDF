@@ -15,7 +15,8 @@ GhostXPS and AutoHotkey do not need to be installed separately.
 
 ## 2. Requirements
 
-- Windows 10 or Windows 11, 32-bit or 64-bit.
+- Windows 10 or Windows 11, 32-bit or 64-bit. Windows 7 and Windows 8.1 are
+  not supported by the .NET 9 service.
 - Administrator permissions during installation.
 - Tytan SQL/Biling SQL and Microsoft XPS Document Writer.
 

@@ -11,6 +11,10 @@ Tytan SQL/Biling SQL is external and closed-source. The project contains an
 interactive AutoHotkey interceptor and a .NET Windows service because a
 Windows service cannot control desktop windows in the user's session.
 
+The service targets .NET 9. Supported client systems are Windows 10 and
+Windows 11, in either x86 or x64 architecture. Windows 7 and Windows 8.1 are
+not supported by current .NET releases.
+
 ## Repository components
 
 ```text
