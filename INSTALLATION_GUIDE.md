@@ -24,14 +24,26 @@ The installer detects the operating-system architecture automatically.
 
 ## 3. Installation
 
-1. Extract `TytanXpsToPdf-package.zip`.
-2. Open the extracted `TytanXpsToPdf` folder.
+1. Extract `TytanXpsToPdf-package.zip` into:
+
+```text
+C:\Program Files\Tytan
+```
+
+Administrator permission may be required to copy files into `C:\Program Files`.
+
+2. Open:
+
+```text
+C:\Program Files\Tytan\TytanXpsToPdf
+```
+
 3. Double-click `setup.cmd` and accept the administrator prompt.
 For a manual administrator installation, open PowerShell as administrator and
 change to the extracted directory:
 
 ```powershell
-cd "C:\Users\<user>\Downloads\TytanXpsToPdf-package"
+cd "C:\Program Files\Tytan\TytanXpsToPdf"
 ```
 
 No PowerShell knowledge is required for the click-based method. The CMD window

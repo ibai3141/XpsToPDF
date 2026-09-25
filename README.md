@@ -64,9 +64,10 @@ powershell -ExecutionPolicy Bypass -File .\Installer\build-package.ps1
 The output is created in `Installer\package`. A ZIP package is also generated
 as `Installer\TytanXpsToPdf-package.zip`.
 
-On the client computer, extract the ZIP, open the inner `TytanXpsToPdf` folder,
-and double-click `setup.cmd`. It opens the administrator consent prompt and
-runs the installation automatically.
+On the client computer, extract the ZIP into `C:\Program Files\Tytan` (which
+may require administrator permission), open
+`C:\Program Files\Tytan\TytanXpsToPdf`, and double-click `setup.cmd`. It opens
+the administrator consent prompt and runs the installation automatically.
 
 For technical administrators, the equivalent PowerShell commands are:
 
