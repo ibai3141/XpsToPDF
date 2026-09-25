@@ -54,6 +54,12 @@ $launcherContent = "@echo off`r`nstart `"`" `"$ahkTarget`" `"$scriptTarget`"`r`n
 [IO.File]::WriteAllText($startupLauncher, $launcherContent, [Text.Encoding]::ASCII)
 
 & sc.exe start XpsToPdfService | Out-Null
+Start-Sleep -Seconds 2
+$service = Get-Service -Name XpsToPdfService -ErrorAction Stop
+if ($service.Status -ne "Running") {
+    throw "The XpsToPdfService service was installed but did not start. Open Services and check XpsToPdfService."
+}
+
 Start-Process -FilePath $ahkTarget -ArgumentList "`"$scriptTarget`""
 if (-not (Test-Path -LiteralPath $startupLauncher)) {
     throw "The AutoHotkey startup launcher could not be created: $startupLauncher"

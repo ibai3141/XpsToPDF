@@ -35,6 +35,7 @@ Copy-Item -LiteralPath $AutoHotkey32Source -Destination (Join-Path $interceptorD
 Copy-Item -LiteralPath (Join-Path $projectRoot "SaveAsInterceptor\saveas_xps.ahk") -Destination $interceptorDestination -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\install.ps1") -Destination $Output -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\uninstall.ps1") -Destination $Output -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\uninstall.cmd") -Destination $Output -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot "Installer\setup.cmd") -Destination $Output -Force
 
 $settingsPath = Join-Path $publish "appsettings.json"

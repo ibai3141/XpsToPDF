@@ -38,7 +38,11 @@ the AutoHotkey interceptor at interactive logon.
 
 ## Uninstall
 
-Run as Administrator:
+For a simple click-based removal, double-click `uninstall.cmd`. It requests
+administrator permission and removes the service, AutoHotkey startup entry,
+GhostXPS, and installed program files. Generated XPS and PDF files are kept.
+
+The PowerShell method remains available for technical administrators:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
