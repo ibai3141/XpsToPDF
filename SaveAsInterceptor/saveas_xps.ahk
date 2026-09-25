@@ -6,7 +6,12 @@ SetControlDelay -1
 xpsFolder := "C:\XPS_OUT"
 DirCreate xpsFolder
 
-pendingPrintName := ""
+; Printing windows can overlap while Tytan sends several jobs. Keep a queue
+; instead of one shared value so a previous document name is never reused.
+pendingPrintNames := []
+lastCapturedByWindow := Map()
+lastConsumedPrintName := ""
+lastConsumedPrintTick := 0
 
 ; Monitor the XPS save dialog.
 SetTimer WatchSaveDialog, 25
@@ -17,9 +22,10 @@ SetTimer CapturePrintingName, 25
 
 WatchSaveDialog()
 {
-    global xpsFolder, pendingPrintName
+    global xpsFolder, pendingPrintNames, lastConsumedPrintName, lastConsumedPrintTick
 
     static handledDialog := 0
+    static retryStarted := Map()
 
     hwnd := FindSaveDialog()
 
@@ -58,11 +64,19 @@ WatchSaveDialog()
 
     ; Tytan's Printing window is the authoritative source for the document name.
     documentName := ""
-    if (pendingPrintName != "" && !IsGenericPrintJobName(pendingPrintName))
+    if (pendingPrintNames.Length > 0)
     {
-        documentName := pendingPrintName
-        pendingPrintName := ""
-        Log("INFO: name obtained from the Printing window: '" . documentName . "'")
+        documentName := pendingPrintNames.RemoveAt(1)
+        if (documentName = "" || IsGenericPrintJobName(documentName))
+            documentName := ""
+        else
+        {
+            if retryStarted.Has(hwnd)
+                retryStarted.Delete(hwnd)
+            lastConsumedPrintName := documentName
+            lastConsumedPrintTick := A_TickCount
+            Log("INFO: name obtained from the Printing window: '" . documentName . "'")
+        }
     }
 
     ; Keep the print queue as a technical fallback if the modal window was missed.
@@ -77,9 +91,18 @@ WatchSaveDialog()
 
     if (documentName = "" || IsGenericPrintJobName(documentName))
     {
-        Log("ERROR: no document name was obtained from the Printing window or print queue.")
-        handledDialog := hwnd
-        ControlSend("{Escape}", , "ahk_id " hwnd)
+        if !retryStarted.Has(hwnd)
+        {
+            retryStarted[hwnd] := A_TickCount
+            Log("WARNING: document name not available yet; waiting for the Printing window.")
+        }
+        else if (A_TickCount - retryStarted[hwnd] >= 15000)
+        {
+            Log("ERROR: no document name was obtained after 15 seconds; cancelling this save dialog.")
+            handledDialog := hwnd
+            retryStarted.Delete(hwnd)
+            ControlSend("{Escape}", , "ahk_id " hwnd)
+        }
         return
     }
 
@@ -115,6 +138,11 @@ WatchSaveDialog()
         documentName,
         " ."
     )
+
+    ; A few Tytan print names may arrive with a leading backslash. It is
+    ; part of the captured name, not a directory separator, so remove it to
+    ; avoid paths such as C:\XPS_OUT\\%_2025_....
+    documentName := LTrim(documentName, "\")
 
     if (documentName = "")
         return
@@ -167,7 +195,10 @@ WatchSaveDialog()
             "Edit1",
             "ahk_id " hwnd
         )
-        Log("Field after writing: '" . actualPath . "'")
+        if (actualPath = filePath)
+            Log("XPS path confirmed in Save dialog: '" . actualPath . "'")
+        else
+            Log("WARNING: Save dialog path differs. Expected '" . filePath . "' but found '" . actualPath . "'")
 
         ; The dialog has now been processed.
         handledDialog := hwnd
@@ -270,7 +301,8 @@ GetLatestPrintJobDocumentName()
 
 CapturePrintingName()
 {
-    global pendingPrintName
+    global pendingPrintNames, lastCapturedByWindow
+    global lastConsumedPrintName, lastConsumedPrintTick
 
     try
     {
@@ -299,7 +331,35 @@ CapturePrintingName()
                 {
                     candidate := Trim(match[1])
                     if (candidate != "" && !IsGenericPrintJobName(candidate))
-                        pendingPrintName := candidate
+                    {
+                        ; A new window can briefly display the previous job
+                        ; while Tytan prepares the next one. Do not enqueue
+                        ; that recently consumed name again.
+                        if (candidate = lastConsumedPrintName
+                            && A_TickCount - lastConsumedPrintTick < 10000)
+                            continue
+
+                        ; The timer sees the same modal window many times per
+                        ; second. Enqueue only when its displayed name changes.
+                        if (!lastCapturedByWindow.Has(hwnd)
+                            || lastCapturedByWindow[hwnd] != candidate)
+                        {
+                            alreadyQueued := false
+                            for _, queuedName in pendingPrintNames
+                            {
+                                if (queuedName = candidate)
+                                {
+                                    alreadyQueued := true
+                                    break
+                                }
+                            }
+
+                            if !alreadyQueued
+                                pendingPrintNames.Push(candidate)
+
+                            lastCapturedByWindow[hwnd] := candidate
+                        }
+                    }
                 }
             }
         }
