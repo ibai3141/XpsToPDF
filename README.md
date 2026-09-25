@@ -1,10 +1,10 @@
 # XpsToPdfService
 
-Automated Microsoft XPS Document Writer to PDF conversion for Tytan/Biling SQL
+Automated Microsoft XPS Document Writer to PDF conversion for Tytan SQL/Biling SQL
 printing workflows.
 
 ```text
-Tytan / Biling SQL
+Tytan SQL / Biling SQL
         |
         v
 Microsoft XPS Document Writer
@@ -22,33 +22,35 @@ XpsToPdfService + GhostXPS
 C:\PDF\document-name.pdf
 ```
 
-Tytan/Biling SQL remains an external, closed-source application. This
+Tytan SQL/Biling SQL remains an external, closed-source application. This
 repository contains the interceptor, conversion service, and deployment
 scripts required to automate its XPS output.
 
 ## Features
 
 - Uses Microsoft XPS Document Writer as required by the workflow.
-- Reads the real document identifier from Tytan's `Printing` or `Drukowanie` window.
+- Reads the real document identifier from Tytan SQL's `Printing` or `Drukowanie` window.
 - Handles the XPS save dialog invisibly.
 - Supports `.xps` and `.oxps` input.
-- Converts with `gxpswin64.exe` and the `pdfwrite` device.
+- Converts with the architecture-matched GhostXPS executable (`gxpswin64.exe`
+  or `gxpswin32.exe`) and the `pdfwrite` device.
 - Preserves names containing `%`.
 - Publishes PDFs through a temporary file to prevent partial output.
 - Prevents duplicate service instances with a global mutex.
 - Starts automatically after Windows boot and user logon.
-- Includes a self-contained `win-x64` installer package.
+- Includes self-contained `win-x64` and `win-x86` service packages.
 
 ## Requirements
 
-- Windows 10 or Windows 11, 64-bit.
+- Windows 10 or Windows 11, 32-bit or 64-bit.
 - Microsoft XPS Document Writer.
-- Tytan/Biling SQL configured to print.
+- Tytan SQL/Biling SQL configured to print.
 - Administrator permissions for installation.
 
-The package includes GhostXPS and both AutoHotkey architectures; they do not
-need to be installed separately. `gswin64c.exe` is not used. The XPS
-interpreter is `gxpswin64.exe`.
+The package includes both GhostXPS architectures and both AutoHotkey
+architectures; they do not need to be installed separately. `gswin64c.exe`
+and `gswin32c.exe` are not used. The installer selects `gxpswin64.exe` on
+64-bit Windows and `gxpswin32.exe` on 32-bit Windows.
 
 ## Installation
 
@@ -75,7 +77,8 @@ The installer:
 
 1. Stops previous service and AutoHotkey processes.
 2. Installs the application under `C:\Program Files\XpsToPdfService`.
-3. Copies GhostXPS and AutoHotkey.
+3. Selects the matching x86/x64 service and GhostXPS binaries, then copies
+   GhostXPS and AutoHotkey.
 4. Creates `C:\XPS_OUT` and `C:\PDF`.
 5. Registers delayed automatic service startup and recovery.
 6. Creates an interactive-user Startup launcher for AutoHotkey.
@@ -106,7 +109,7 @@ Get-Service XpsToPdfService
 Get-Process AutoHotkey64
 ```
 
-Print a test document from Tytan and verify:
+Print a test document from Tytan SQL and verify:
 
 ```text
 C:\XPS_OUT\<document-name>.xps
@@ -149,17 +152,17 @@ duplicate watchers and conversions.
 
 The interceptor uses the following order:
 
-1. Tytan's `Printing` or `Drukowanie` window (`Page 1 of ...`).
+1. Tytan SQL's `Printing` or `Drukowanie` window (`Page 1 of ...`).
 2. `Win32_PrintJob.Document` as a technical fallback.
-3. If neither source is available, the save is cancelled rather than creating
-   a misleading filename.
+3. If the name is temporarily unavailable, the hidden Save dialog is retried
+   for up to 15 seconds; it is cancelled only after the timeout.
 
 The application window title and the XPS dialog's proposed filename are not
 used as document names.
 
 ### Exact name extraction
 
-Tytan opens a modal window titled `Printing` or `Drukowanie`. Its text contains
+Tytan SQL opens a modal window titled `Printing` or `Drukowanie`. Its text contains
 the real document identifier. English installations show:
 
 ```text
@@ -180,10 +183,10 @@ text := WinGetText("ahk_id " hwnd)
 
 if RegExMatch(
     text,
-    "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$",
+    "im)^\s*(?:Page\s+\d+\s+of|Strona\s+\d+\s+z)\s+(.+?)\s*$",
     &match
 )
-    pendingPrintName := Trim(match[1])
+    pendingPrintNames.Push(Trim(match[1]))
 ```
 
 The captured value becomes the base filename:
@@ -198,7 +201,7 @@ The captured value becomes the base filename:
 The save-dialog path is filled automatically with the captured name:
 
 ```autohotkey
-filePath := xpsFolder . "\\" . documentName . ".xps"
+filePath := xpsFolder . "\" . documentName . ".xps"
 ControlSetText(filePath, "Edit1", "ahk_id " hwnd)
 ControlSend("{Enter}", , "ahk_id " hwnd)
 ```
@@ -238,6 +241,6 @@ AutoHotkey Startup launcher. It preserves `C:\XPS_OUT` and `C:\PDF`.
 
 ## Licensing and redistribution
 
-Tytan/Biling SQL is not part of this repository. When redistributing the
+Tytan SQL/Biling SQL is not part of this repository. When redistributing the
 package, preserve the license files included with GhostXPS and AutoHotkey and
 review their respective redistribution terms.

@@ -3,11 +3,11 @@
 ## Architecture
 
 ```text
-Tytan -> Microsoft XPS Document Writer -> AutoHotkey -> C:\XPS_OUT\*.xps
+Tytan SQL -> Microsoft XPS Document Writer -> AutoHotkey -> C:\XPS_OUT\*.xps
       -> XpsToPdfService -> GhostXPS -> C:\PDF\*.pdf
 ```
 
-Tytan/Biling SQL is external and closed-source. The project contains an
+Tytan SQL/Biling SQL is external and closed-source. The project contains an
 interactive AutoHotkey interceptor and a .NET Windows service because a
 Windows service cannot control desktop windows in the user's session.
 
@@ -32,7 +32,7 @@ SetTimer WatchSaveDialog, 25
 SetTimer CapturePrintingName, 25
 ```
 
-Tytan's `Printing` or Polish `Drukowanie` window contains the authoritative
+Tytan SQL's `Printing` or Polish `Drukowanie` window contains the authoritative
 identifier, for example:
 
 ```text
@@ -45,9 +45,14 @@ The script reads the window text and extracts the value after `Page 1 of`:
 windows := WinGetList("Printing")
 text := WinGetText("ahk_id " hwnd)
 
-if RegExMatch(text, "im)^\s*Page\s+\d+\s+of\s+(.+?)\s*$", &match)
-    pendingPrintName := Trim(match[1])
+if RegExMatch(text, "im)^\s*(?:Page\s+\d+\s+of|Strona\s+\d+\s+z)\s+(.+?)\s*$", &match)
+    pendingPrintNames.Push(Trim(match[1]))
 ```
+
+Names are stored in a queue and deduplicated per Printing-window handle. This
+prevents overlapping Tytan SQL print windows from reusing the previous document
+name. A recently consumed name is ignored briefly while Tytan SQL creates the next
+window.
 
 The XPS dialog itself is kept alive but invisible. Its controls are filled and
 confirmed automatically:
@@ -57,6 +62,11 @@ WinSetTransparent(0, "ahk_id " hwnd)
 ControlSetText(filePath, "Edit1", "ahk_id " hwnd)
 ControlSend("{Enter}", , "ahk_id " hwnd)
 ```
+
+If the name is not available yet, the dialog remains hidden and is retried for
+up to 15 seconds. Only after that timeout is the save cancelled. The log uses
+`XPS path confirmed in Save dialog` for a successful field verification; this
+is an informational message, not an error.
 
 The script selects `XPS Document (*.xps)` when available, preventing the
 driver from selecting `.oxps`. The Windows print queue (`Win32_PrintJob`) is
@@ -151,7 +161,7 @@ psi.ArgumentList.Add(xpsFile);
 
 ### Percent-sign handling
 
-Tytan identifiers can begin with `%`. GhostXPS treats `%` in output paths as
+Tytan SQL identifiers can begin with `%`. GhostXPS treats `%` in output paths as
 a pattern marker. The service escapes it only for the process argument:
 
 ```csharp
@@ -186,8 +196,10 @@ builder.Services.AddWindowsService(options =>
 builder.Services.AddHostedService<Worker>();
 ```
 
-`build-package.ps1` publishes a self-contained `win-x64` executable and copies
-GhostXPS, AutoHotkey, the interceptor, and install scripts into the package.
+`build-package.ps1` publishes self-contained `win-x64` and `win-x86`
+executables and copies matching 64-bit/32-bit GhostXPS binaries, AutoHotkey,
+the interceptor, and install scripts into the package. `install.ps1` detects
+the operating-system architecture and installs the matching pair.
 `install.ps1` stops old processes, copies files to `C:\Program Files`, creates
 the output directories, registers delayed automatic service startup and
 recovery, and creates a correctly quoted Startup launcher for the interactive
@@ -201,7 +213,7 @@ start "" "C:\Program Files\XpsToPdfService\SaveAsInterceptor\AutoHotkey64.exe" "
 
 ## Performance and maintenance
 
-The service normally spends 2–5 seconds per XPS job. Tytan creates jobs
+The service normally spends 2–5 seconds per XPS job. Tytan SQL creates jobs
 sequentially, so extra conversion threads do not improve a batch when no XPS
 jobs are waiting. The main cost is Microsoft XPS generation, followed by
 GhostXPS rendering.
@@ -210,8 +222,28 @@ Maintenance checklist:
 
 - Keep `GhostXpsPath` synchronized with `gxpswin64.exe`.
 - Test names containing `%` and ordinary invoice names.
-- Test a multi-document Tytan print.
+- Test a multi-document Tytan SQL print.
 - Verify service and AutoHotkey after a Windows restart.
 - Never run multiple service instances during development.
 - Rebuild the ZIP after changing binaries or installer scripts.
 - Preserve GhostXPS license files when redistributing its directory.
+
+## Logging
+
+The Windows service writes its operational log to:
+
+```text
+C:\XPS_OUT\xpstoservice.log
+```
+
+It records XPS detection, conversion start, expected PDF destination,
+GhostXPS exit status, successful PDF creation, failure reasons, and elapsed
+time. The interactive interceptor writes to:
+
+```text
+C:\XPS_OUT\saveas-interceptor.log
+```
+
+`XPS path confirmed in Save dialog` means that AutoHotkey verified the path it
+wrote into the hidden Save dialog. A `WARNING` is emitted only when the actual
+control value differs from the expected path.

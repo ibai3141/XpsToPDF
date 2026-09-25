@@ -5,42 +5,43 @@
 The package automates:
 
 ```text
-Tytan -> Microsoft XPS Document Writer -> AutoHotkey -> XpsToPdfService -> GhostXPS -> PDF
+Tytan SQL -> Microsoft XPS Document Writer -> AutoHotkey -> XpsToPdfService -> GhostXPS -> PDF
 ```
 
-It includes the Windows service, `gxpswin64.exe`, `AutoHotkey32.exe`, and `AutoHotkey64.exe`,
-`saveas_xps.ahk`, `appsettings.json`, `install.ps1`, and `uninstall.ps1`.
+It includes both service builds (`service-x64` and `service-x86`), both
+GhostXPS builds (`GhostXPS-x64` and `GhostXPS-x86`), both AutoHotkey builds,
+`saveas_xps.ahk`, and click-based setup and removal scripts.
 GhostXPS and AutoHotkey do not need to be installed separately.
 
 ## 2. Requirements
 
-- Windows 10 or Windows 11, 64-bit.
+- Windows 10 or Windows 11, 32-bit or 64-bit.
 - Administrator permissions during installation.
-- Tytan/Biling SQL and Microsoft XPS Document Writer.
+- Tytan SQL/Biling SQL and Microsoft XPS Document Writer.
 
-The package is published for `win-x64` and is not compatible with 32-bit
-Windows.
+The installer detects the operating-system architecture automatically.
 
 ## 3. Installation
 
 1. Extract `XpsToPdfService-package.zip`.
-2. Open **PowerShell as administrator**.
-3. Change to the extracted directory:
+2. Double-click `setup.cmd` and accept the administrator prompt.
+For a manual administrator installation, open PowerShell as administrator and
+change to the extracted directory:
 
 ```powershell
 cd "C:\Users\<user>\Downloads\XpsToPdfService-package"
 ```
 
-Alternatively, double-click `setup.cmd` and accept the administrator prompt.
-No PowerShell knowledge is required for this method.
+No PowerShell knowledge is required for the click-based method. The CMD window
+displays the result and waits for a key before closing.
 
-For a manual administrator installation, allow scripts for the current PowerShell session:
+For the manual method, allow scripts for the current PowerShell session:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
 ```
 
-5. Run the installer:
+Run the installer:
 
 ```powershell
 .\install.ps1
@@ -100,8 +101,9 @@ Default values:
 }
 ```
 
-Normally no changes are required. The service uses `gxpswin64.exe`;
-`gswin64c.exe` is not required.
+Normally no changes are required. The installer uses `gxpswin64.exe` on
+64-bit Windows and `gxpswin32.exe` on 32-bit Windows. Neither `gswin64c.exe`
+nor `gswin32c.exe` is required.
 
 ## 6. Verify the installation
 
@@ -114,22 +116,29 @@ Get-Process AutoHotkey64
 
 The service should show `Running` and the AutoHotkey process should exist.
 
-Print one document from Tytan. The expected output is:
+Print one document from Tytan SQL. The expected output is:
 
 ```text
 C:\XPS_OUT\document-name.xps
 C:\PDF\document-name.pdf
 ```
 
-The document name is read from Tytan's `Printing` window. The XPS save dialog
+The document name is read from Tytan SQL's `Printing` window. The XPS save dialog
 is handled invisibly.
 
-## 7. Normal operation
+The service log is:
 
-After installation, the user only selects **Print** / **Drukuj** in Tytan.
-No PowerShell command is required during normal operation.
+```text
+C:\XPS_OUT\xpstoservice.log
+```
 
-## 8. Troubleshooting
+The interceptor log is:
+
+```text
+C:\XPS_OUT\saveas-interceptor.log
+```
+
+## 7. Troubleshooting
 
 If the service is stopped, run PowerShell as administrator:
 
@@ -146,6 +155,10 @@ C:\Program Files\XpsToPdfService\SaveAsInterceptor\saveas_xps.ahk
 
 If the Startup launcher is missing, run `install.ps1` again as administrator.
 
+If a name is not immediately available, AutoHotkey keeps the hidden save
+dialog open and retries for up to 15 seconds. It cancels the dialog only after
+that timeout.
+
 If GhostXPS is not found, verify:
 
 ```text
@@ -156,7 +169,10 @@ and check `GhostXpsPath` in `appsettings.json`.
 
 ## 9. Uninstallation
 
-From an elevated PowerShell window in the extracted package directory:
+For a one-click removal, double-click `uninstall.cmd` and accept the
+administrator prompt. The window displays the result and waits for a key.
+
+For a technical-admin removal, use an elevated PowerShell window:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
