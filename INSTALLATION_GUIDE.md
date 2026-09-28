@@ -1,198 +1,49 @@
-# XpsToPdfService — Installation and User Guide
+# TytanXpsToPdf — Client Installation Guide
 
-## 1. Package contents
+## What is included
 
-The package automates:
+The package connects Tytan SQL printing to PDF creation. Microsoft XPS
+Document Writer, GhostXPS and AutoHotkey are included; nothing else must be
+installed separately.
 
-```text
-Tytan SQL -> Microsoft XPS Document Writer -> AutoHotkey -> XpsToPdfService -> GhostXPS -> PDF
-```
+## Requirements
 
-It includes both service builds (`service-x64` and `service-x86`), both
-GhostXPS builds (`GhostXPS-x64` and `GhostXPS-x86`), both AutoHotkey builds,
-`saveas_xps.ahk`, and click-based setup and removal scripts.
-GhostXPS and AutoHotkey do not need to be installed separately.
+- Windows 10 or Windows 11 (32-bit or 64-bit).
+- Tytan SQL and Microsoft XPS Document Writer already installed.
+- Permission to approve one Windows administrator prompt.
 
-## 2. Requirements
+## Installation
 
-- Windows 10 or Windows 11, 32-bit or 64-bit. Windows 7 and Windows 8.1 are
-  not supported by the .NET 9 service.
-- Administrator permissions during installation.
-- Tytan SQL/Biling SQL and Microsoft XPS Document Writer.
+1. Extract `TytanXpsToPdf-package.zip` into `C:\Program Files\Tytan`.
+2. Open `C:\Program Files\Tytan\TytanXpsToPdf`.
+3. Double-click **setup.cmd**.
+4. Accept the Windows administrator prompt and wait for **Installation
+   completed successfully**. Press a key to close the window.
 
-The installer detects the operating-system architecture automatically.
+No commands or PowerShell knowledge are required.
 
-## 3. Installation
+## Using the program
 
-1. Extract `TytanXpsToPdf-package.zip` into:
+Before printing in Tytan SQL, open the printer selection and choose
+**Microsoft XPS Document Writer**. This printer must be selected for the
+automatic conversion to work. Then print normally; no filename selection is
+required.
 
-```text
-C:\Program Files\Tytan
-```
+Files are created here:
 
-Administrator permission may be required to copy files into `C:\Program Files`.
+- XPS: `C:\XPS_OUT`
+- PDF: `C:\PDF`
 
-2. Open:
+The PDF uses the same document name as the Tytan SQL print job.
 
-```text
-C:\Program Files\Tytan\TytanXpsToPdf
-```
+## Uninstallation
 
-3. Double-click `setup.cmd` and accept the administrator prompt.
-For a manual administrator installation, open PowerShell as administrator and
-change to the extracted directory:
+Open the installed package folder and double-click **uninstall.cmd**. Accept
+the administrator prompt and wait for **Uninstallation completed successfully**.
+Existing files in `C:\XPS_OUT` and `C:\PDF` are preserved.
 
-```powershell
-cd "C:\Program Files\Tytan\TytanXpsToPdf"
-```
+## If help is needed
 
-No PowerShell knowledge is required for the click-based method. The CMD window
-displays the result and waits for a key before closing.
-
-For the manual method, allow scripts for the current PowerShell session:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-```
-
-Run the installer:
-
-```powershell
-.\install.ps1
-```
-
-Expected result:
-
-```text
-TytanXpsToPdf installed successfully.
-```
-
-The installer stops old service and AutoHotkey processes before copying files,
-so reinstallations do not require manual process cleanup.
-
-## 4. Installed layout
-
-The program is installed in:
-
-```text
-C:\Program Files\TytanXpsToPdf
-```
-
-The installer creates:
-
-```text
-C:\XPS_OUT
-C:\PDF
-```
-
-The Windows service is registered as `TytanXpsToPdf`, starts automatically
-with delayed start, and has automatic recovery enabled.
-
-AutoHotkey is started immediately and a launcher is placed in the interactive
-user's Startup folder:
-
-```text
-%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\TytanXpsToPdf-AutoHotkey.cmd
-```
-
-## 5. Configuration
-
-Configuration is stored in:
-
-```text
-C:\Program Files\TytanXpsToPdf\appsettings.json
-```
-
-Default values:
-
-```json
-{
-  "XpsToPdf": {
-    "XpsFolder": "C:\\XPS_OUT",
-    "PdfFolder": "C:\\PDF",
-    "GhostXpsPath": "C:\\Program Files\\TytanXpsToPdf\\GhostXPS\\gxpswin64.exe"
-  }
-}
-```
-
-Normally no changes are required. The installer uses `gxpswin64.exe` on
-64-bit Windows and `gxpswin32.exe` on 32-bit Windows. Neither `gswin64c.exe`
-nor `gswin32c.exe` is required.
-
-## 6. Verify the installation
-
-Run:
-
-```powershell
-Get-Service TytanXpsToPdf
-Get-Process AutoHotkey64
-```
-
-The service should show `Running` and the AutoHotkey process should exist.
-
-Print one document from Tytan SQL. The expected output is:
-
-```text
-C:\XPS_OUT\document-name.xps
-C:\PDF\document-name.pdf
-```
-
-The document name is read from Tytan SQL's `Printing` window. The XPS save dialog
-is handled invisibly.
-
-The service log is:
-
-```text
-C:\XPS_OUT\xpstoservice.log
-```
-
-The interceptor log is:
-
-```text
-C:\XPS_OUT\saveas-interceptor.log
-```
-
-## 7. Troubleshooting
-
-If the service is stopped, run PowerShell as administrator:
-
-```powershell
-Start-Service TytanXpsToPdf
-```
-
-If AutoHotkey is not running, verify that these files exist:
-
-```text
-C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\AutoHotkey64.exe
-C:\Program Files\TytanXpsToPdf\SaveAsInterceptor\saveas_xps.ahk
-```
-
-If the Startup launcher is missing, run `install.ps1` again as administrator.
-
-If a name is not immediately available, AutoHotkey keeps the hidden save
-dialog open and retries for up to 15 seconds. It cancels the dialog only after
-that timeout.
-
-If GhostXPS is not found, verify:
-
-```text
-C:\Program Files\TytanXpsToPdf\GhostXPS\gxpswin64.exe
-```
-
-and check `GhostXpsPath` in `appsettings.json`.
-
-## 9. Uninstallation
-
-For a one-click removal, double-click `uninstall.cmd` and accept the
-administrator prompt. The window displays the result and waits for a key.
-
-For a technical-admin removal, use an elevated PowerShell window:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-.\uninstall.ps1
-```
-
-The uninstaller stops the service, waits for locked files to be released,
-removes the service, program files and Startup launcher, and retries folder
-removal when necessary. It preserves `C:\XPS_OUT` and `C:\PDF`.
+Please send the document name, approximate print time, and the files
+`C:\XPS_OUT\xpstoservice.log` and
+`C:\XPS_OUT\saveas-interceptor.log` to technical support.
