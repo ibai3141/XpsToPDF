@@ -11,6 +11,7 @@ $packageArchitecture = if ($is64Bit) { "x64" } else { "x86" }
 $serviceSource = Join-Path $PSScriptRoot "service-$packageArchitecture"
 $ghostSource = Join-Path $PSScriptRoot "GhostXPS-$packageArchitecture"
 $serviceTarget = Join-Path $installRoot "XpsToPdfService.exe"
+$successMarker = Join-Path $PSScriptRoot ".install-success"
 $scriptTarget = Join-Path $installRoot "SaveAsInterceptor\saveas_xps.ahk"
 $architecture = $env:PROCESSOR_ARCHITEW6432
 if ([string]::IsNullOrWhiteSpace($architecture)) {
@@ -48,6 +49,7 @@ if (-not (Test-Path -LiteralPath $ghostSource)) {
 }
 
 New-Item -ItemType Directory -Force -Path $installRoot, "$installRoot\SaveAsInterceptor", "$installRoot\GhostXPS", "C:\XPS_OUT", "C:\PDF" | Out-Null
+Remove-Item -LiteralPath $successMarker -Force -ErrorAction SilentlyContinue
 
 # Remove the previous service/folder name during upgrades.
 & sc.exe stop XpsToPdfService 2>$null | Out-Null
@@ -95,4 +97,5 @@ Start-Process -FilePath $ahkTarget -ArgumentList "`"$scriptTarget`""
 if (-not (Test-Path -LiteralPath $startupLauncher)) {
     throw "The AutoHotkey startup launcher could not be created: $startupLauncher"
 }
+Set-Content -LiteralPath $successMarker -Value "TytanXpsToPdf installation completed." -Encoding utf8
 Write-Host "TytanXpsToPdf installed successfully."

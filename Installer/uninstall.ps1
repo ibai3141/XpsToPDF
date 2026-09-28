@@ -36,6 +36,7 @@ Get-Process AutoHotkey32 -ErrorAction SilentlyContinue |
     Stop-Process -Force -ErrorAction SilentlyContinue
 & sc.exe delete TytanXpsToPdf 2>$null | Out-Null
 Remove-Item -LiteralPath $startupLauncher -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath (Join-Path $PSScriptRoot ".install-success") -Force -ErrorAction SilentlyContinue
 
 for ($attempt = 1; $attempt -le 10; $attempt++) {
     if (-not (Test-Path -LiteralPath $installRoot)) {
