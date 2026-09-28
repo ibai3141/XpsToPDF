@@ -193,5 +193,6 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 .\uninstall.ps1
 ```
 
-The uninstaller removes the service, program files and Startup launcher, but
-preserves `C:\XPS_OUT` and `C:\PDF`.
+The uninstaller stops the service, waits for locked files to be released,
+removes the service, program files and Startup launcher, and retries folder
+removal when necessary. It preserves `C:\XPS_OUT` and `C:\PDF`.

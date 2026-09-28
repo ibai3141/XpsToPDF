@@ -207,7 +207,8 @@ the operating-system architecture and installs the matching pair.
 `install.ps1` stops old processes, copies files to `C:\Program Files`, creates
 the output directories, registers delayed automatic service startup and
 recovery, and creates a correctly quoted Startup launcher for the interactive
-user. `uninstall.ps1` removes installed components but preserves output files.
+user. `uninstall.ps1` stops the service, waits for locked files to be released,
+removes installed components with retries, and preserves output files.
 
 The launcher must use the empty `start` window title before quoted paths:
 
