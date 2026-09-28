@@ -186,6 +186,14 @@ public class Worker : BackgroundService
             File.Move(temporaryPdfFile, pdfFile, true);
             LogInfo($"PDF created: {pdfFile}");
 
+            // Delete the source only after the final PDF has been published.
+            // If deletion fails, keep the PDF and report the retained XPS;
+            // never risk losing the only usable document.
+            if (await DeleteSourceXpsAsync(xpsFile))
+                LogInfo($"XPS deleted after successful conversion: {xpsFile}");
+            else
+                LogError($"PDF created, but the source XPS could not be deleted: {xpsFile}");
+
         }
         catch (Exception ex)
         {
@@ -271,6 +279,30 @@ public class Worker : BackgroundService
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(100));
+        }
+
+        return false;
+    }
+
+    private static async Task<bool> DeleteSourceXpsAsync(string filePath)
+    {
+        const int maxAttempts = 5;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            try
+            {
+                File.Delete(filePath);
+                return !File.Exists(filePath);
+            }
+            catch (IOException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(200));
+            }
+            catch (UnauthorizedAccessException) when (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(200));
+            }
         }
 
         return false;

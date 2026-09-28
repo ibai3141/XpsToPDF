@@ -186,6 +186,11 @@ if (process.ExitCode != 0 || !File.Exists(temporaryPdfFile))
 File.Move(temporaryPdfFile, pdfFile, true);
 ```
 
+Only after the final PDF has been published does the service delete the source
+XPS. The deletion is retried briefly if the file is still locked. A failed
+conversion never deletes the XPS, and a deletion failure is recorded while
+preserving the valid PDF.
+
 This prevents incomplete PDFs from appearing as final output.
 
 ## Host and installer
