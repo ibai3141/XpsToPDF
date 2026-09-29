@@ -42,8 +42,7 @@ scripts required to automate its XPS output.
 
 ## Requirements
 
-- Windows 10 or Windows 11, 32-bit or 64-bit. Windows 7 and Windows 8.1 are
-  not supported by the .NET 9 service.
+- Windows 10 or Windows 11, 32-bit or 64-bit.
 - Microsoft XPS Document Writer.
 - Tytan SQL/Biling SQL configured to print.
 - Administrator permissions for installation.
