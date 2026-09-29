@@ -192,6 +192,34 @@ preserving the valid PDF.
 
 This prevents incomplete PDFs from appearing as final output.
 
+### Worker method responsibilities
+
+`Worker` coordinates the complete conversion pipeline:
+
+| Method | Responsibility |
+|---|---|
+| `ExecuteAsync` | Creates the global mutex, prepares the folders, starts the `FileSystemWatcher`, scans existing files, and keeps the service alive until shutdown. |
+| `OnXpsCreated` | Receives a filesystem `Created` event and forwards the path to `QueueXps`. |
+| `QueueXps` | Accepts only `.xps` and `.oxps`, prevents duplicate processing, and starts the conversion task. |
+| `ConvertXpsToPdf` | Runs one job: waits for a complete XPS, starts GhostXPS, validates the result, publishes the PDF, deletes the source XPS, and logs elapsed time. |
+| `WaitForFileReadyAsync` | Confirms that the XPS is non-empty, exclusively readable, and has a stable size and timestamp. |
+| `DeleteSourceXpsAsync` | Removes the source XPS after successful PDF publication and retries briefly if it is locked. |
+| `LogInfo` / `LogError` | Send informational or error messages to the common logger. |
+| `WriteLog` | Writes timestamped messages to the console and `C:\XPS_OUT\xpstoservice.log`; logging failures never stop conversion. |
+
+The normal call sequence is:
+
+```text
+ExecuteAsync
+    -> OnXpsCreated
+        -> QueueXps
+            -> ConvertXpsToPdf
+                -> WaitForFileReadyAsync
+                -> GhostXPS
+                -> publish PDF
+                -> DeleteSourceXpsAsync
+```
+
 ## Host and installer
 
 `Program.cs` enables Windows-service hosting:
